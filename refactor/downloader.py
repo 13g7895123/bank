@@ -3,50 +3,57 @@
 使用 Playwright 進行網頁自動化
 """
 import os
+import sys
+from pathlib import Path
 from typing import Dict, Type, Optional
 from dataclasses import dataclass
 
-from .banks.base import BaseBankDownloader, DownloadResult, DownloadStatus
+# 確保可以導入 banks 子模組
+_current_dir = Path(__file__).parent
+if str(_current_dir) not in sys.path:
+    sys.path.insert(0, str(_current_dir))
+
+from banks.base import BaseBankDownloader, DownloadResult, DownloadStatus
 
 # 導入所有銀行下載器
-from .banks.bank_01_bot import BOTDownloader
-from .banks.bank_02_landbank import LandBankDownloader
-from .banks.bank_03_tcb import TCBBankDownloader
-from .banks.bank_04_firstbank import FirstBankDownloader
-from .banks.bank_05_hncb import HNCBDownloader
-from .banks.bank_06_chb import CHBDownloader
-from .banks.bank_07_scsb import SCSBDownloader
-from .banks.bank_08_fubon import FubonDownloader
-from .banks.bank_09_cathay import CathayDownloader
-from .banks.bank_10_eximbank import EximBankDownloader
-from .banks.bank_11_bok import BOKDownloader
-from .banks.bank_12_megabank import MegaBankDownloader
-from .banks.bank_13_citibank import CitibankDownloader
-from .banks.bank_15_obank import OBankDownloader
-from .banks.bank_16_tbb import TBBDownloader
-from .banks.bank_17_scb import SCBDownloader
-from .banks.bank_18_taichungbank import TaichungBankDownloader
-from .banks.bank_19_ktb import KTBDownloader
-from .banks.bank_20_hsbc import HSBCDownloader
-from .banks.bank_21_taipeistarbank import TaipeiStarBankDownloader
-from .banks.bank_22_hwataibank import HwataiBankDownloader
-from .banks.bank_23_skbank import SKBankDownloader
-from .banks.bank_24_sunnybank import SunnyBankDownloader
-from .banks.bank_25_bop import BOPDownloader
-from .banks.bank_26_cotabank import CotaBankDownloader
-from .banks.bank_27_ubot import UBOTDownloader
-from .banks.bank_28_feib import FEIBDownloader
-from .banks.bank_29_yuantabank import YuantaBankDownloader
-from .banks.bank_30_sinopac import SinoPacDownloader
-from .banks.bank_31_esunbank import ESunBankDownloader
-from .banks.bank_32_kgibank import KGIBankDownloader
-from .banks.bank_33_dbs import DBSBankDownloader
-from .banks.bank_34_taishinbank import TaishinBankDownloader
-from .banks.bank_36_entiebank import EntieBankDownloader
-from .banks.bank_37_ctbc import CTBCBankDownloader
-from .banks.bank_38_rakutenbank import RakutenBankDownloader
-from .banks.bank_40_linebank import LineBankDownloader
-from .banks.bank_41_nextbank import NextBankDownloader
+from banks.bank_01_bot import BOTDownloader
+from banks.bank_02_landbank import LandBankDownloader
+from banks.bank_03_tcb import TCBBankDownloader
+from banks.bank_04_firstbank import FirstBankDownloader
+from banks.bank_05_hncb import HNCBDownloader
+from banks.bank_06_chb import CHBDownloader
+from banks.bank_07_scsb import SCSBDownloader
+from banks.bank_08_fubon import FubonDownloader
+from banks.bank_09_cathay import CathayDownloader
+from banks.bank_10_eximbank import EximBankDownloader
+from banks.bank_11_bok import BOKDownloader
+from banks.bank_12_megabank import MegaBankDownloader
+from banks.bank_13_citibank import CitibankDownloader
+from banks.bank_15_obank import OBankDownloader
+from banks.bank_16_tbb import TBBDownloader
+from banks.bank_17_scb import SCBDownloader
+from banks.bank_18_taichungbank import TaichungBankDownloader
+from banks.bank_19_ktb import KTBDownloader
+from banks.bank_20_hsbc import HSBCDownloader
+from banks.bank_21_taipeistarbank import TaipeiStarBankDownloader
+from banks.bank_22_hwataibank import HwataiBankDownloader
+from banks.bank_23_skbank import SKBankDownloader
+from banks.bank_24_sunnybank import SunnyBankDownloader
+from banks.bank_25_bop import BOPDownloader
+from banks.bank_26_cotabank import CotaBankDownloader
+from banks.bank_27_ubot import UBOTDownloader
+from banks.bank_28_feib import FEIBDownloader
+from banks.bank_29_yuantabank import YuantaBankDownloader
+from banks.bank_30_sinopac import SinoPacDownloader
+from banks.bank_31_esunbank import ESunBankDownloader
+from banks.bank_32_kgibank import KGIBankDownloader
+from banks.bank_33_dbs import DBSBankDownloader
+from banks.bank_34_taishinbank import TaishinBankDownloader
+from banks.bank_36_entiebank import EntieBankDownloader
+from banks.bank_37_ctbc import CTBCBankDownloader
+from banks.bank_38_rakutenbank import RakutenBankDownloader
+from banks.bank_40_linebank import LineBankDownloader
+from banks.bank_41_nextbank import NextBankDownloader
 
 
 # 銀行下載器對照表
