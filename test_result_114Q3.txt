@@ -1,0 +1,161 @@
+銀行財報下載測試結果 - 114Q3
+測試時間：2025-11-25 21:01:54
+============================================================
+
+成功：0 家
+已存在：0 家
+失敗：38 家
+
+失敗清單：
+  1. 臺灣銀行
+     狀態：例外: Message: Unable to obtain driver for MicrosoftEdge
+     網址：https://www.firstbank.com.tw/sites/fcb/touch/1565687622063
+
+  2. 臺灣土地銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.landbank.com.tw/Category/Items/財務業務資訊-財報
+
+  3. 合作金庫商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.tcb-bank.com.tw/about-tcb/disclosure/bad-debt/asset-quality
+
+  4. 第一商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.firstbank.com.tw/sites/fcb/Statutory
+
+  5. 華南商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.hnfhc.com.tw/HNFHC/ir/d.do
+
+  6. 彰化商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.bankchb.com/frontend/finance.jsp
+
+  7. 上海商業儲蓄銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.scsb.com.tw/content/about/about04_a_01.jsp
+
+  8. 台北富邦銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.fubon.com/banking/about/intro_FBB/Financial_status.htm
+
+  9. 國泰世華商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.cathaybk.com.tw/cathaybk/personal/about/news/announce/
+
+  10. 中國輸出入銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.eximbank.com.tw/zh-tw/FinanceInfo/Finance/Pages/default.aspx
+
+  11. 高雄銀行
+     狀態：尚無資料
+     網址：https://www.bok.com.tw/-107
+
+  12. 兆豐國際商業銀行
+     狀態：尚無資料
+     網址：https://www.megabank.com.tw//about/announcement/legal-disclosure/finance-report
+
+  13. 花旗（台灣）銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.citigroup.com/global/about-us/global-presence/zh-TW/taiwan/regulatory-disclosures
+
+  15. 王道商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.o-bank.com/common/regulation/regulation-financialreport
+
+  16. 臺灣中小企業銀行
+     狀態：例外: 'NoneType' object has no attribute 'find_all'
+     網址：https://ir.tbb.com.tw/financial/quarterly-results
+
+  17. 渣打國際商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.sc.com/tw/about-us/investor-relations/
+
+  18. 台中商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.tcbbank.com.tw/Site/intro/finReport/finReport.aspx
+
+  19. 京城商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://customer.ktb.com.tw/new/about/8d88e237
+
+  20. 匯豐(台灣)商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.hsbc.com.tw/help/announcements/
+
+  21. 瑞興商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.taipeistarbank.com.tw/StatutoryDisclosure/FinancialReports
+
+  22. 華泰商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.hwataibank.com.tw/public/public02-01/
+
+  23. 臺灣新光商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.skbank.com.tw/QFI
+
+  24. 陽信商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.sunnybank.com.tw/net/Page/Smenu/4
+
+  25. 板信商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.bop.com.tw/Footer/Financial_Report?tni=110&refid=null
+
+  26. 三信商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.cotabank.com.tw/web/public/expose/#tab-%E8%B2%A1%E5%8B%99%E6%A5%AD%E5%8B%99%E8%B3%87%E8%A8%8A
+
+  27. 聯邦商業銀行
+     狀態：尚無資料
+     網址：https://www.ubot.com.tw/investors
+
+  28. 遠東國際商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.feib.com.tw/detail?id=349
+
+  29. 元大商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.yuantabank.com.tw/bank/bulletin/statutoryDisclosure/list.do?layer_id=26a83777c500000745d9
+
+  30. 永豐商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://bank.sinopac.com/sinopacBT/about/investor/financial-statement.html
+
+  31. 玉山商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://doc.twse.com.tw/server-java/t57sb01?step=1&colorchg=1&co_id=5847&year=114&seamon=&mtype=A&
+
+  32. 凱基商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.kgibank.com.tw/zh-tw/about-us/financial-summary
+
+  33. 星展(台灣)商業銀行
+     狀態：例外: Couldn't find a tree builder with the features you
+     網址：https://www.dbs.com.tw/personal-zh/legal-disclaimers-and-announcements.page
+
+  34. 台新國際商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.taishinbank.com.tw/TSB/about-taishin/brief-introduction-to-the-bank/financeInfo
+
+  36. 安泰商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.entiebank.com.tw/entie/disclosure-financial
+
+  37. 中國信託商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.ctbcbank.com/content/dam/twrbo/pdf/aboutctbc/114Q1_CTBC.pdf
+
+  38. 樂天國際商業銀行
+     狀態：尚無資料
+     網址：https://www.rakuten-bank.com.tw/portal/other/disclosure
+
+  40. 連線商業銀行
+     狀態：尚無資料
+     網址：https://corp.linebank.com.tw/zh-tw/company-financial
+
+  41. 將來商業銀行
+     狀態：例外: Failed to parse: http://XX.XX.X.XX:XXXXs
+     網址：https://www.nextbank.com.tw/disclosures/download/52831e76d4000000d9ee07510ffac025
+
