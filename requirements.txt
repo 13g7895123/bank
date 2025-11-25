@@ -1,0 +1,19 @@
+# 網頁爬蟲相關
+requests>=2.28.0
+beautifulsoup4>=4.11.0
+html5lib>=1.1
+selenium>=4.8.0
+
+# 資料處理
+pandas>=1.5.0
+numpy>=1.23.0
+openpyxl>=3.0.0
+
+# PDF 處理
+pdfplumber>=0.7.0
+tabula-py>=2.6.0
+PyMuPDF>=1.21.0
+
+# 圖像處理與 OCR
+opencv-python>=4.7.0
+pytesseract>=0.3.10
