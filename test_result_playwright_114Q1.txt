@@ -1,0 +1,32 @@
+銀行財報下載測試結果 (Playwright) - 114Q1
+測試時間：2025-11-25 21:26:51
+============================================================
+
+成功：13 家
+已存在：3 家
+尚無資料：13 家
+錯誤：9 家
+
+錯誤清單：
+  9. 國泰世華商業銀行: 下載錯誤: Timeout 30000ms exceeded.
+  13. 花旗（台灣）銀行: 下載錯誤: Timeout 30000ms exceeded.
+  16. 臺灣中小企業銀行: 下載錯誤: Page.query_selector: Execution context was destroyed, most likely because of a navigation
+  18. 台中商業銀行: 下載錯誤: Page.goto: net::ERR_CONNECTION_RESET at https://www.tcbbank.com.tw/Site/intro/finReport/finReport.aspx
+Call log:
+  - navigating to "https://www.tcbbank.com.tw/Site/intro/finReport/finReport.aspx", waiting until "load"
+
+  24. 陽信商業銀行: 下載錯誤: Page.goto: net::ERR_NETWORK_CHANGED at https://www.sunnybank.com.tw/net/Page/Smenu/4
+Call log:
+  - navigating to "https://www.sunnybank.com.tw/net/Page/Smenu/4", waiting until "load"
+
+  27. 聯邦商業銀行: 下載錯誤: Page.wait_for_selector: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("tbody") to be visible
+    25 × locator resolved to 5 elements. Proceeding with the first one: <tbody data-v-0b53d15c="">…</tbody>
+
+  30. 永豐商業銀行: 下載錯誤: Timeout 30000ms exceeded.
+  32. 凱基商業銀行: 下載錯誤: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://www.kgibank.com.tw/zh-tw/about-us/financial-summary", waiting until "load"
+
+  41. 將來商業銀行: 下載錯誤: Timeout 30000ms exceeded.
