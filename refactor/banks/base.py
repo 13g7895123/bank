@@ -90,6 +90,8 @@ class BaseBankDownloader(ABC):
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 )
                 page = context.new_page()
+                page.set_default_timeout(60000)  # 60 秒超時
+                page.set_default_navigation_timeout(60000)
                 
                 result = self._download(page, year, quarter)
                 
