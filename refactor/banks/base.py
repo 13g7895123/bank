@@ -32,6 +32,7 @@ class BaseBankDownloader(ABC):
     bank_name: str = ""
     bank_code: int = 0
     bank_url: str = ""
+    headless: bool = True  # 是否使用無頭模式，部分銀行需要設為 False
     
     def __init__(self, data_dir: str = "data"):
         self.data_dir = data_dir
@@ -84,7 +85,7 @@ class BaseBankDownloader(ABC):
         
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+                browser = p.chromium.launch(headless=self.headless)
                 context = browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 )
@@ -144,4 +145,31 @@ class BaseBankDownloader(ABC):
             return DownloadResult(
                 status=DownloadStatus.ERROR,
                 message=f"下載失敗: {str(e)}"
+            )
+    
+    def download_pdf_by_click(self, page: Page, locator, year: int, quarter: int) -> DownloadResult:
+        """透過點擊連結下載 PDF（適用於需要 JavaScript 處理的下載連結）"""
+        try:
+            # 確保目錄存在
+            self.ensure_dir(year, quarter)
+            file_path = self.get_file_path(year, quarter)
+            
+            # 啟動下載監聽
+            with page.expect_download(timeout=30000) as download_info:
+                locator.click()
+            
+            download = download_info.value
+            
+            # 儲存檔案
+            download.save_as(file_path)
+            
+            return DownloadResult(
+                status=DownloadStatus.SUCCESS,
+                message="下載成功",
+                file_path=file_path
+            )
+        except Exception as e:
+            return DownloadResult(
+                status=DownloadStatus.ERROR,
+                message=f"點擊下載失敗: {str(e)}"
             )
