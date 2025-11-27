@@ -1,7 +1,9 @@
 """
 華南商業銀行 (5) - Hua Nan Commercial Bank
-網址: https://www.hncb.com.tw/footer/public_disclosure
+網址: https://www.hnfhc.com.tw/HNFHC/ir/d.do
 """
+import subprocess
+import os
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
 from playwright.sync_api import Page
 
@@ -11,38 +13,84 @@ class HNCBDownloader(BaseBankDownloader):
     
     bank_name = "華南商業銀行"
     bank_code = 5
-    bank_url = "https://www.hncb.com.tw/footer/public_disclosure"
+    bank_url = "https://www.hnfhc.com.tw/HNFHC/ir/d.do"
+    headless = False  # 可能需要有頭模式
     
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
+        
+        # 民國年轉西元年
+        western_year = year + 1911
         
         # 前往財報頁面
         page.goto(self.bank_url)
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(2000)
         
-        # 尋找包含年度和季度的連結
-        links = page.query_selector_all("a")
+        # 建立搜尋的 title 關鍵字
+        # 格式: "下載 華南銀行2025年第3季合併財務報告.pdf"
+        # 季度對應: Q1=第1季, Q2=第2季, Q3=第3季, Q4=第4季 或 全年度
+        quarter_num = quarter
         
-        pdf_url = None
-        for link in links:
-            title = link.get_attribute("title") or ""
-            text = link.inner_text()
-            
-            # 檢查是否符合目標
-            if (str(year) in title or str(year) in text) and (quarter_text in title or quarter_text in text or f"Q{quarter}" in title):
-                href = link.get_attribute("href")
-                if href and ".pdf" in href.lower():
-                    if not href.startswith("http"):
-                        pdf_url = f"https://www.hncb.com.tw{href}"
-                    else:
-                        pdf_url = href
-                    break
+        search_keywords = [
+            f"下載 華南銀行{western_year}年第{quarter_num}季",
+        ]
         
-        if not pdf_url:
+        # Q4 額外嘗試「全年度」或「年度」
+        if quarter == 4:
+            search_keywords.extend([
+                f"下載 華南銀行{western_year}年全年度",
+                f"下載 華南銀行{western_year}年度",
+            ])
+        
+        # 嘗試各種關鍵字找連結
+        link = None
+        for keyword in search_keywords:
+            locator = page.locator(f'a[title*="{keyword}"]')
+            if locator.count() > 0:
+                link = locator.first
+                break
+        
+        if not link:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
-                message=f"找不到 {year}年{quarter_text} 的資料"
+                message=f"找不到 {year}年{quarter_text} ({western_year}年第{quarter_num}季) 的下載連結"
             )
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        # 取得 href（直接 PDF URL）
+        href = link.get_attribute("href")
+        if not href:
+            return DownloadResult(
+                status=DownloadStatus.ERROR,
+                message="無法取得 PDF 連結"
+            )
+        
+        # 使用 wget 下載（比較能處理 SSL 問題）
+        try:
+            self.ensure_dir(year, quarter)
+            file_path = self.get_file_path(year, quarter)
+            
+            # 使用 wget 下載，--no-check-certificate 跳過 SSL 驗證
+            result = subprocess.run(
+                ['wget', '--no-check-certificate', '-q', '-O', file_path, href],
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            if result.returncode == 0 and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                return DownloadResult(
+                    status=DownloadStatus.SUCCESS,
+                    message="下載成功",
+                    file_path=file_path
+                )
+            else:
+                return DownloadResult(
+                    status=DownloadStatus.ERROR,
+                    message=f"wget 下載失敗: {result.stderr}"
+                )
+        except Exception as e:
+            return DownloadResult(
+                status=DownloadStatus.ERROR,
+                message=f"下載失敗: {str(e)}"
+            )
