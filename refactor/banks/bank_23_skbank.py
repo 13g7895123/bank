@@ -11,68 +11,63 @@ class SKBankDownloader(BaseBankDownloader):
     
     bank_name = "臺灣新光商業銀行"
     bank_code = 23
-    bank_url = "https://www.skbank.com.tw/789.html"
+    bank_url = "https://www.skbank.com.tw/QFI"
     
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
+        search_text = f"{year}年{quarter_text}"  # 例如: 114年第三季
         
         # 前往財報頁面
         page.goto(self.bank_url)
         page.wait_for_load_state("networkidle")
         
-        # 找目標項目
-        target = page.query_selector("li.control_me_li")
-        if not target:
+        # 在 ul li 結構中找到目標季度的連結
+        # li 中有 a 元素，會寫「114年第三季」這樣的字樣
+        target_link = None
+        li_elements = page.query_selector_all("ul li")
+        
+        for li in li_elements:
+            link = li.query_selector("a")
+            if link:
+                link_text = link.inner_text()
+                if str(year) in link_text and quarter_text in link_text:
+                    target_link = link
+                    break
+        
+        if not target_link:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
-                message="找不到資料項目"
+                message=f"找不到 {search_text} 的連結"
             )
         
-        title = target.inner_text()
-        
-        if str(year) not in title or quarter_text not in title:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"尚無 {year}年{quarter_text} 的資料"
-            )
-        
-        # 取得第一層連結
-        link = target.query_selector("a")
-        if not link:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到連結"
-            )
-        
-        href = link.get_attribute("href")
-        sub_url = href if href.startswith("http") else f"https://www.skbank.com.tw{href}"
-        
-        # 訪問子頁面
-        page.goto(sub_url)
+        # 點擊連結進入子頁面
+        target_link.click()
         page.wait_for_load_state("networkidle")
         
-        # 根據季度找 PDF 連結
-        if quarter == 1 or quarter == 3:
-            items = page.query_selector_all("li.control_me_li")
-            if len(items) >= 7:
-                pdf_link = items[6].query_selector("a")
-            else:
-                pdf_link = None
-        else:
-            ol = page.query_selector("ol.sena")
-            if ol:
-                items = ol.query_selector_all("li")
-                pdf_link = items[-1].query_selector("a") if items else None
-            else:
-                pdf_link = None
+        # 在子頁面找「資產品質」連結
+        asset_quality_link = None
+        all_links = page.query_selector_all("a")
         
-        if not pdf_link:
+        for link in all_links:
+            link_text = link.inner_text()
+            if "資產品質" in link_text:
+                asset_quality_link = link
+                break
+        
+        if not asset_quality_link:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
-                message="找不到 PDF 連結"
+                message="找不到「資產品質」連結"
             )
         
-        pdf_href = pdf_link.get_attribute("href")
+        # 取得 PDF 連結並下載
+        pdf_href = asset_quality_link.get_attribute("href")
+        if not pdf_href:
+            return DownloadResult(
+                status=DownloadStatus.NO_DATA,
+                message="「資產品質」連結無 href 屬性"
+            )
+        
         pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.skbank.com.tw{pdf_href}"
         
         return self.download_pdf_from_url(page, pdf_url, year, quarter)

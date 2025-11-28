@@ -4,6 +4,7 @@
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
 from playwright.sync_api import Page
+import re
 
 
 class SunnyBankDownloader(BaseBankDownloader):
@@ -20,86 +21,48 @@ class SunnyBankDownloader(BaseBankDownloader):
         page.goto(self.bank_url)
         page.wait_for_load_state("networkidle")
         
-        # 找表格
-        table = page.query_selector("table.table.table-borderless")
-        if not table:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到資料表格"
-            )
+        # 根據季度建立目標 href 的搜尋模式
+        # Q1-Q3: /public/pdf/114年第1季.pdf
+        # Q4: /public/pdf/114年度公開說明書.pdf
+        if quarter == 4:
+            # 第四季是年度公開說明書
+            target_pattern = f"/public/pdf/{year}年度公開說明書.pdf"
+        else:
+            # Q1-Q3
+            target_pattern = f"/public/pdf/{year}年第{quarter}季.pdf"
         
-        # 檢查年度
-        year_span = table.query_selector("span")
-        if not year_span:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到年度資訊"
-            )
+        # 找所有 a 元素，檢查 href 屬性
+        target_link = None
+        all_links = page.query_selector_all("a")
         
-        year_text = year_span.inner_text()
-        if str(year) not in year_text:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"尚無 {year}年 的資料"
-            )
-        
-        # 找對應季度的連結
-        links = table.query_selector_all("a")
-        sub_url = None
-        for link in links:
-            title = link.inner_text()
-            if quarter_text in title:
-                href = link.get_attribute("href")
-                sub_url = href if href.startswith("http") else f"https://www.sunnybank.com.tw{href}"
+        for link in all_links:
+            href = link.get_attribute("href")
+            if href and target_pattern in href:
+                target_link = link
                 break
         
-        if not sub_url:
+        if not target_link:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
-                message=f"找不到 {quarter_text} 的連結"
+                message=f"找不到 {year}年{quarter_text} 的連結 (目標: {target_pattern})"
             )
         
-        # 訪問子頁面
-        page.goto(sub_url)
-        page.wait_for_load_state("networkidle")
-        
-        # 找表格中的 PDF 連結
-        tbody = page.query_selector("tbody")
-        if not tbody:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到資料表格"
-            )
-        
-        rows = tbody.query_selector_all("tr")
-        if not rows:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到資料列"
-            )
-        
-        tds = rows[0].query_selector_all("td")
-        if len(tds) <= quarter:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"找不到 {quarter_text} 的資料"
-            )
-        
-        year_in_row = tds[0].inner_text()
-        if str(year) not in year_in_row:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"資料年度不符"
-            )
-        
-        pdf_link = tds[quarter].query_selector("a")
-        if not pdf_link:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"找不到 {quarter_text} 的 PDF 連結"
-            )
-        
-        pdf_href = pdf_link.get_attribute("href")
+        # 取得完整 PDF 連結
+        pdf_href = target_link.get_attribute("href")
         pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.sunnybank.com.tw{pdf_href}"
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        # 點擊連結觸發下載（完整流程）
+        with page.expect_download() as download_info:
+            target_link.click()
+        
+        download = download_info.value
+        
+        # 儲存檔案
+        save_path = self.get_file_path(year, quarter)
+        download.save_as(save_path)
+        
+        return DownloadResult(
+            status=DownloadStatus.SUCCESS,
+            message="下載成功",
+            file_path=str(save_path)
+        )
