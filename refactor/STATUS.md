@@ -57,8 +57,8 @@
 | 17 | 渣打國際商業銀行 | ✅ | ✅ | |
 | 18 | 台中商業銀行 | ✅ | ✅ | |
 | 19 | 京城商業銀行 | ✅ | ✅ | |
-| 20 | 匯豐(台灣)商業銀行 | ✅ | ⚠️ | 需 OCR 處理 |
-| 21 | 瑞興商業銀行 | ✅ | ⚠️ | 需 OCR 處理 |
+| 20 | 匯豐(台灣)商業銀行 | ✅ | ⚠️ | OCR 處理，可解析 4/8 類別 |
+| 21 | 瑞興商業銀行 | ✅ | ⚠️ | OCR 處理，可解析 3/8 類別 |
 | 22 | 華泰商業銀行 | ✅ | ✅ | |
 | 23 | 臺灣新光商業銀行 | ✅ | ✅ | |
 | 24 | 陽信商業銀行 | ✅ | ✅ | |
@@ -110,13 +110,30 @@ def normalize_text(text: str) -> str:
 
 ### 待處理問題
 
-#### 1. OCR 處理銀行
+#### 1. OCR 處理銀行（已實作 OCR 解析器）
 
-以下銀行的 PDF 為掃描圖片格式，需要 OCR 處理：
-- 匯豐(台灣)商業銀行 (20)
-- 瑞興商業銀行 (21)
+以下銀行的 PDF 為掃描圖片格式，使用 OCR 處理：
+- 匯豐(台灣)商業銀行 (20) - 114Q1 尚無資料
+- 瑞興商業銀行 (21) - OCR 可解析部分類別
 
-**建議**：安裝 Tesseract OCR 及繁體中文語言包
+**OCR 解析器位置**：`core/ocr_parser.py`
+
+**安裝需求**：
+```bash
+# macOS
+brew install tesseract tesseract-lang poppler
+pip install pytesseract pdf2image pillow
+```
+
+**使用方式**：
+```python
+from refactor.core import OCRParser, is_scanned_pdf
+
+# 檢查是否為掃描式 PDF
+if is_scanned_pdf('path/to/pdf'):
+    parser = OCRParser()
+    result = parser.parse_pdf('path/to/pdf', '銀行名稱')
+```
 
 #### 2. 政策性銀行
 
