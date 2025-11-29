@@ -32,7 +32,9 @@ class BaseBankDownloader(ABC):
     bank_name: str = ""
     bank_code: int = 0
     bank_url: str = ""
-    headless: bool = True  # 是否使用無頭模式，部分銀行需要設為 False
+    headless: bool = True  # 是否使用無頭模式，預設為 True
+    force_headless: bool = False  # 強制使用無頭模式（不自動重試有頭模式）
+    retry_with_head: bool = True  # 無頭模式失敗時是否自動重試有頭模式
     browser_type: str = "chromium"  # 瀏覽器類型: chromium, firefox, webkit
     
     def __init__(self, data_dir: str = "../data"):
@@ -100,10 +102,34 @@ class BaseBankDownloader(ABC):
                 file_path=self.get_file_path(year, quarter)
             )
         
+        # 第一次嘗試：使用預設的 headless 設定
+        result = self._try_download(year, quarter, headless=self.headless)
+        
+        # 驗證下載結果
+        if self._is_download_successful(result, year, quarter):
+            return result
+        
+        # 如果無頭模式失敗且允許重試有頭模式
+        if self.headless and self.retry_with_head and not self.force_headless:
+            # 清理可能產生的不完整檔案
+            self._cleanup_failed_download(year, quarter)
+            
+            # 第二次嘗試：使用有頭模式
+            result = self._try_download(year, quarter, headless=False)
+            
+            # 再次驗證
+            if self._is_download_successful(result, year, quarter):
+                result.message = f"{result.message} (使用有頭模式)"
+                return result
+        
+        return result
+    
+    def _try_download(self, year: int, quarter: int, headless: bool) -> DownloadResult:
+        """嘗試下載（內部方法）"""
         try:
             with sync_playwright() as p:
                 browser_launcher = self._get_browser(p)
-                browser = browser_launcher.launch(headless=self.headless)
+                browser = browser_launcher.launch(headless=headless)
                 context = browser.new_context(
                     user_agent=self._get_user_agent(),
                     viewport={"width": 1920, "height": 1080}
@@ -122,6 +148,42 @@ class BaseBankDownloader(ABC):
                 status=DownloadStatus.ERROR,
                 message=f"下載錯誤: {str(e)}"
             )
+    
+    def _is_download_successful(self, result: DownloadResult, year: int, quarter: int) -> bool:
+        """驗證下載是否成功"""
+        # 狀態不是成功，直接返回 False
+        if result.status != DownloadStatus.SUCCESS:
+            return False
+        
+        # 檢查檔案是否存在
+        file_path = result.file_path or self.get_file_path(year, quarter)
+        if not os.path.isfile(file_path):
+            return False
+        
+        # 檢查檔案大小（PDF 至少應該有幾 KB）
+        file_size = os.path.getsize(file_path)
+        if file_size < 1024:  # 小於 1KB 可能是錯誤頁面
+            return False
+        
+        # 檢查檔案頭是否為 PDF 格式
+        try:
+            with open(file_path, 'rb') as f:
+                header = f.read(8)
+                if not header.startswith(b'%PDF'):
+                    return False
+        except Exception:
+            return False
+        
+        return True
+    
+    def _cleanup_failed_download(self, year: int, quarter: int):
+        """清理失敗的下載檔案"""
+        file_path = self.get_file_path(year, quarter)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
     
     @abstractmethod
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:

@@ -14,7 +14,7 @@ class MegaBankDownloader(BaseBankDownloader):
     bank_name = "兆豐國際商業銀行"
     bank_code = 12
     bank_url = "https://www.megabank.com.tw/about/announcement/news/regulatory-disclosures/finance-report"
-    headless = False  # 可能需要有頭模式
+    headless = True  # 預設無頭模式，失敗時自動重試有頭模式
     
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)

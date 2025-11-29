@@ -14,7 +14,7 @@ class HNCBDownloader(BaseBankDownloader):
     bank_name = "華南商業銀行"
     bank_code = 5
     bank_url = "https://www.hnfhc.com.tw/HNFHC/ir/d.do"
-    headless = False  # 可能需要有頭模式
+    headless = True  # 預設無頭模式，失敗時自動重試有頭模式
     
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)

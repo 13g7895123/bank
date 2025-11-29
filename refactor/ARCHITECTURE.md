@@ -117,6 +117,8 @@ class BaseBankDownloader(ABC):
     bank_name: str      # 銀行名稱
     bank_code: int      # 銀行代碼
     bank_url: str       # 財報網址
+    headless: bool = True  # 預設無頭模式
+    retry_with_head: bool = True  # 失敗時自動重試有頭模式
     
     def download(self, year: int, quarter: int) -> DownloadResult:
         """下載財報"""
@@ -125,6 +127,16 @@ class BaseBankDownloader(ABC):
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         """實際下載邏輯（子類別實作）"""
 ```
+
+**無頭/有頭模式自動切換**：
+
+1. 預設使用無頭模式（headless=True）下載
+2. 下載後自動驗證：
+   - 檔案是否存在
+   - 檔案大小是否 > 1KB
+   - 檔案頭是否為 `%PDF`
+3. 若驗證失敗，自動清理並使用有頭模式重試
+4. 訊息會標註 `(使用有頭模式)` 表示經過重試
 
 **下載方式**：
 

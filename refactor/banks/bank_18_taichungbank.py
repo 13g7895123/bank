@@ -12,7 +12,7 @@ class TaichungBankDownloader(BaseBankDownloader):
     bank_name = "台中商業銀行"
     bank_code = 18
     bank_url = "https://www.tcbbank.com.tw/Site/intro/finReport/finReport.aspx"
-    headless = False  # 使用有頭模式
+    headless = True  # 預設無頭模式，失敗時自動重試有頭模式
     
     def _number_to_chinese_year(self, year: int) -> str:
         """將民國年轉換為中文年度，例如 114 -> 一百一十四"""
