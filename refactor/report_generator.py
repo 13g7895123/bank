@@ -155,6 +155,13 @@ def find_asset_quality_pages(pdf: pdfplumber.PDF) -> list[tuple]:
     return [(page, has_table) for _, page, has_table in candidates]
 
 
+def normalize_text(text: str) -> str:
+    """移除空格和換行，統一文字格式以利關鍵字比對"""
+    if text is None:
+        return ""
+    return str(text).replace(" ", "").replace("\n", "").replace("　", "").strip()
+
+
 def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> list[AssetQualityRow]:
     """從表格資料提取資產品質資訊"""
     results = []
@@ -164,10 +171,10 @@ def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> 
         if not row or len(row) < 6:
             continue
         
-        # 清理欄位
-        col0 = (str(row[0]) if row[0] else "").replace('\n', '').strip()
-        col1 = (str(row[1]) if len(row) > 1 and row[1] else "").replace('\n', '').strip()
-        col2 = (str(row[2]) if len(row) > 2 and row[2] else "").replace('\n', '').strip()
+        # 清理欄位（正規化移除空格和換行）
+        col0 = normalize_text(row[0])
+        col1 = normalize_text(row[1]) if len(row) > 1 else ""
+        col2 = normalize_text(row[2]) if len(row) > 2 else ""
         
         # 數值欄位（當期資料）
         overdue_amount = row[3] if len(row) > 3 else ""
@@ -176,16 +183,16 @@ def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> 
         
         subject = None
         
-        # 判斷資料類型
-        if "企業" in col0 and "金融" in col0:
+        # 判斷資料類型（col0/col1/col2 已正規化，無空格）
+        if "企業金融" in col0:
             current_category = "企業金融"
-            if "擔保" in col1 or "擔 保" in col1:
+            if "擔保" in col1 and "無" not in col1:
                 subject = "企業金融_擔保"
-        elif "消費" in col0 and "金融" in col0:
+        elif "消費金融" in col0:
             current_category = "消費金融"
             if "住宅" in col1 or "抵押" in col1:
                 subject = "消費金融_住宅抵押貸款"
-        elif current_category == "企業金融" and ("無擔保" in col1 or "無 擔 保" in col1):
+        elif current_category == "企業金融" and "無擔保" in col1:
             subject = "企業金融_無擔保"
         elif "住宅" in col1 or "抵押" in col1:
             subject = "消費金融_住宅抵押貸款"
@@ -193,14 +200,14 @@ def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> 
             subject = "消費金融_現金卡"
         elif "小額" in col1 or "純信用" in col1 or "信用貸款" in col1:
             subject = "消費金融_小額純信用貸款"
-        elif "其他" in col1 or "其 他" in col1:
-            if "擔保" in col2 or "擔 保" in col2:
+        elif "其他" in col1:
+            if "擔保" in col2 and "無" not in col2:
                 subject = "消費金融_其他_擔保"
-            elif "無擔保" in col2 or "無 擔 保" in col2 or "無擔" in col2:
+            elif "無擔保" in col2:
                 subject = "消費金融_其他_無擔保"
-        elif ("無擔保" in col2 or "無 擔 保" in col2) and current_category == "消費金融":
+        elif "無擔保" in col2 and current_category == "消費金融":
             subject = "消費金融_其他_無擔保"
-        elif ("擔保" in col2 or "擔 保" in col2) and current_category == "消費金融" and "無" not in col2:
+        elif "擔保" in col2 and current_category == "消費金融" and "無" not in col2:
             subject = "消費金融_其他_擔保"
         elif "合計" in col0 or "放款業務合計" in col0:
             subject = "合計"
