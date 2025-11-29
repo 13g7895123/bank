@@ -33,8 +33,9 @@ class BaseBankDownloader(ABC):
     bank_code: int = 0
     bank_url: str = ""
     headless: bool = True  # 是否使用無頭模式，部分銀行需要設為 False
+    browser_type: str = "chromium"  # 瀏覽器類型: chromium, firefox, webkit
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, data_dir: str = "../data"):
         self.data_dir = data_dir
         
     def get_quarter_text(self, quarter: int) -> str:
@@ -64,6 +65,22 @@ class BaseBankDownloader(ABC):
             f.write(content)
         return file_path
     
+    def _get_browser(self, playwright):
+        """根據 browser_type 取得對應的瀏覽器"""
+        if self.browser_type == "firefox":
+            return playwright.firefox
+        elif self.browser_type == "webkit":
+            return playwright.webkit
+        else:
+            return playwright.chromium
+    
+    def _get_user_agent(self) -> str:
+        """根據瀏覽器類型取得對應的 User-Agent"""
+        if self.browser_type == "firefox":
+            return "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"
+        else:
+            return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    
     def download(self, year: int, quarter: int) -> DownloadResult:
         """
         下載財報
@@ -85,9 +102,11 @@ class BaseBankDownloader(ABC):
         
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=self.headless)
+                browser_launcher = self._get_browser(p)
+                browser = browser_launcher.launch(headless=self.headless)
                 context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    user_agent=self._get_user_agent(),
+                    viewport={"width": 1920, "height": 1080}
                 )
                 page = context.new_page()
                 page.set_default_timeout(60000)  # 60 秒超時
