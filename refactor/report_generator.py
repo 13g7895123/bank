@@ -270,6 +270,121 @@ def extract_from_text(text: str, year: str, quarter: str, bank_name: str) -> lis
     return results
 
 
+def extract_feib_by_position(page, year: str, quarter: str, bank_name: str) -> list[AssetQualityRow]:
+    """
+    遠東國際商業銀行專用解析器
+    
+    該銀行的 PDF 文字被拆散成單字排列，需要根據字元 X 座標位置重新組合。
+    使用固定的欄位邊界來分割：業務別 | 逾期放款 | 放款總額 | 比率
+    """
+    from collections import defaultdict
+    
+    chars = page.chars
+    if not chars:
+        return []
+    
+    # 按 Y 座標分組
+    rows = defaultdict(list)
+    for char in chars:
+        y_key = round(char['top'])
+        rows[y_key].append(char)
+    
+    # 從重組後的文字提取年度季度
+    sorted_ys = sorted(rows.keys())
+    for y in sorted_ys[:20]:  # 只看前 20 行
+        row_chars = sorted(rows[y], key=lambda c: c['x0'])
+        line = ''.join(c['text'] for c in row_chars)
+        if '年' in line and '月' in line:
+            match = re.search(r'(\d+)年(\d+)月', line)
+            if match:
+                year = match.group(1)
+                month = int(match.group(2))
+                if month <= 3:
+                    quarter = "Q1"
+                elif month <= 6:
+                    quarter = "Q2"
+                elif month <= 9:
+                    quarter = "Q3"
+                else:
+                    quarter = "Q4"
+                break
+    
+    # 固定的 X 座標邊界 (根據遠東銀行 PDF 結構)
+    COL_BOUNDARIES = [210, 276, 358, 395]  # 業務別 | 逾期 | 總額 | 比率
+    
+    def extract_by_columns(row_chars):
+        row_chars = sorted(row_chars, key=lambda c: c['x0'])
+        cols = ['' for _ in range(len(COL_BOUNDARIES) + 1)]
+        for char in row_chars:
+            x = char['x0']
+            col_idx = 0
+            for i, boundary in enumerate(COL_BOUNDARIES):
+                if x >= boundary:
+                    col_idx = i + 1
+            cols[col_idx] += char['text']
+        return cols
+    
+    results = []
+    found_subjects = set()
+    sorted_ys = sorted(rows.keys())
+    
+    for idx, y in enumerate(sorted_ys):
+        row_chars = sorted(rows[y], key=lambda c: c['x0'])
+        line = ''.join(c['text'] for c in row_chars)
+        
+        subject = None
+        data_y = y
+        
+        # 判斷類別
+        if '企業' in line and '擔' in line and '保' in line and '無' not in line:
+            subject = '企業金融_擔保'
+        elif '金融' in line and '無' in line and '擔' in line and '保' in line:
+            subject = '企業金融_無擔保'
+        elif '住宅抵押貸款' in line and '註' not in line[:5]:
+            subject = '消費金融_住宅抵押貸款'
+        elif '現金卡' in line and '註' not in line[:5]:
+            subject = '消費金融_現金卡'
+        elif '小額純信用貸款' in line and '註' not in line[:5]:
+            subject = '消費金融_小額純信用貸款'
+            # 數據可能在下一行
+            if idx + 1 < len(sorted_ys):
+                next_y = sorted_ys[idx + 1]
+                next_line = ''.join(c['text'] for c in sorted(rows[next_y], key=lambda c: c['x0']))
+                if '金' in next_line[:5] and any(c.isdigit() for c in next_line):
+                    data_y = next_y
+        elif '其他' in line and '擔' in line and '保' in line and '無' not in line and '註' not in line[:5]:
+            subject = '消費金融_其他_擔保'
+        elif '無擔保' in line and '註6' in line:
+            subject = '消費金融_其他_無擔保'
+        elif '放款業務合計' in line:
+            subject = '合計'
+            # 數據在下一行
+            if idx + 1 < len(sorted_ys):
+                data_y = sorted_ys[idx + 1]
+        
+        if subject and subject not in found_subjects:
+            found_subjects.add(subject)
+            
+            cols = extract_by_columns(rows[data_y])
+            overdue = parse_number(cols[1])
+            total = parse_number(cols[2])
+            ratio = parse_ratio(cols[3])
+            
+            results.append(AssetQualityRow(
+                year=year,
+                quarter=quarter,
+                subject=SUBJECT_MAPPING.get(subject, subject),
+                overdue_amount=overdue,
+                total_loan=total,
+                overdue_ratio=ratio,
+                bank_name=bank_name,
+            ))
+    
+    # 按 subject 排序
+    results.sort(key=lambda x: x.subject)
+    return results
+
+
 def extract_asset_quality_data(pdf_path: str, bank_name: str) -> list[AssetQualityRow]:
     """
     從 PDF 提取資產品質資料。
@@ -285,15 +400,33 @@ def extract_asset_quality_data(pdf_path: str, bank_name: str) -> list[AssetQuali
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
+            # 從檔名預先提取年度季度
+            filename = os.path.basename(pdf_path)
+            default_year, default_quarter = extract_year_quarter_from_filename(filename)
+            
+            # 遠東銀行專用解析器（文字被拆散成單字排列）
+            if "遠東" in bank_name:
+                # 找資產品質頁面（通常是第3頁）
+                for page in pdf.pages:
+                    text = page.extract_text() or ""
+                    if "資產品質" in text:
+                        year, quarter = extract_year_quarter(text)
+                        if not year:
+                            year, quarter = default_year, default_quarter
+                        
+                        results = extract_feib_by_position(page, year, quarter, bank_name)
+                        if results:
+                            break
+                
+                if results:
+                    return results
+            
+            # 通用解析流程
             # 找到相關頁面
             pages_info = find_asset_quality_pages(pdf)
             if not pages_info:
                 print(f"[警告] {bank_name}: 找不到資產品質頁面")
                 return results
-            
-            # 從檔名預先提取年度季度
-            filename = os.path.basename(pdf_path)
-            default_year, default_quarter = extract_year_quarter_from_filename(filename)
             
             # 嘗試從各頁面提取資料
             for page, has_table in pages_info:
