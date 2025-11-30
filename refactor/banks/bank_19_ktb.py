@@ -1,6 +1,11 @@
 """
 京城商業銀行 (19) - King's Town Bank
 網址: https://customer.ktb.com.tw/new/about/8d88e237
+
+網頁結構：
+- 每個年度有一個 h3 標題和一個 table.tftable
+- 114年、113年、112年... 按順序排列
+- 表格第一行是標題，後續行是季度資料
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
 from playwright.sync_api import Page
@@ -18,63 +23,71 @@ class KTBDownloader(BaseBankDownloader):
         
         # 前往財報頁面
         page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_timeout(3000)
         
-        # 找年度標題
-        year_title = page.query_selector("div.ktbcontent h3")
-        if not year_title:
+        # 找所有年度標題和表格
+        year_titles = page.locator("div.ktbcontent h3")
+        tables = page.locator("table.tftable")
+        
+        # 找到目標年度的索引
+        target_index = -1
+        for i in range(year_titles.count()):
+            title_text = year_titles.nth(i).inner_text()
+            try:
+                year_on_page = int(title_text.split("年")[0])
+                if year_on_page == year:
+                    target_index = i
+                    break
+            except:
+                continue
+        
+        if target_index < 0:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
-                message="找不到年度標題"
+                message=f"找不到 {year}年 的資料"
             )
         
-        try:
-            year_on_page = int(year_title.inner_text().split("年")[0])
-        except:
+        if target_index >= tables.count():
+            return DownloadResult(
+                status=DownloadStatus.NO_DATA,
+                message=f"找不到 {year}年 的表格"
+            )
+        
+        # 取得目標表格
+        table = tables.nth(target_index)
+        rows = table.locator("tr")
+        
+        # 搜尋目標季度
+        # 格式: "第四季", "第三季", "第二季", "第一季"
+        quarter_map = {1: "第一季", 2: "第二季", 3: "第三季", 4: "第四季"}
+        target_quarter_text = quarter_map.get(quarter, "")
+        
+        target_link = None
+        for i in range(1, rows.count()):  # 跳過標題行
+            row_text = rows.nth(i).inner_text()
+            if target_quarter_text in row_text:
+                # 找第二個 td 中的連結（母子公司合併報表）
+                tds = rows.nth(i).locator("td")
+                if tds.count() >= 2:
+                    link = tds.nth(1).locator("a").first
+                    if link.count() > 0:
+                        target_link = link
+                        break
+        
+        if not target_link:
+            return DownloadResult(
+                status=DownloadStatus.NO_DATA,
+                message=f"找不到 {year}年{quarter_text} 的下載連結"
+            )
+        
+        href = target_link.get_attribute("href")
+        if not href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,
-                message="無法解析年度"
+                message="無法取得下載連結"
             )
         
-        if year_on_page != year:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"尚無 {year}年 的資料 (目前: {year_on_page}年)"
-            )
-        
-        # 找表格
-        table = page.query_selector("table.tftable")
-        if not table:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到資料表格"
-            )
-        
-        rows = table.query_selector_all("tr")
-        # 從下往上數，第 quarter 列
-        target_row_index = len(rows) - quarter
-        if target_row_index < 0:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"找不到 {quarter_text} 的資料"
-            )
-        
-        target_row = rows[target_row_index]
-        tds = target_row.query_selector_all("td")
-        if len(tds) < 2:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="資料列格式錯誤"
-            )
-        
-        link = tds[1].query_selector("a")
-        if not link:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"找不到 {quarter_text} 的下載連結"
-            )
-        
-        href = link.get_attribute("href")
         pdf_url = href if href.startswith("http") else f"https://customer.ktb.com.tw{href}"
         
         return self.download_pdf_from_url(page, pdf_url, year, quarter)
