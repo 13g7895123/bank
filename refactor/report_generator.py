@@ -7,16 +7,52 @@
 支援兩種解析模式：
 1. 表格模式 (pdfplumber extract_tables) - 適用於標準表格格式
 2. 文字模式 (純文字解析) - 適用於特殊排版的 PDF
+
+支援多工並行解析 PDF 檔案以提升效能。
 """
 
 import os
 import re
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Tuple
 from dataclasses import dataclass
 
 import pandas as pd
 import pdfplumber
+
+
+# ============================================================
+# Logging 設定
+# ============================================================
+
+def setup_logging() -> logging.Logger:
+    """設定 logging"""
+    log_dir = Path(__file__).parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+    
+    log_file = log_dir / f"report_{datetime.now().strftime('%Y%m%d')}.log"
+    
+    logger = logging.getLogger("bank_report")
+    logger.setLevel(logging.DEBUG)
+    
+    # 避免重複加入 handler
+    if not logger.handlers:
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setLevel(logging.DEBUG)
+        file_formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+    
+    return logger
+
+# 初始化 logger
+logger = setup_logging()
 
 
 @dataclass
@@ -385,13 +421,14 @@ def extract_feib_by_position(page, year: str, quarter: str, bank_name: str) -> l
     return results
 
 
-def extract_asset_quality_data(pdf_path: str, bank_name: str) -> list[AssetQualityRow]:
+def extract_asset_quality_data(pdf_path: str, bank_name: str, force_year_quarter: str = None) -> list[AssetQualityRow]:
     """
     從 PDF 提取資產品質資料。
     
     Args:
         pdf_path: PDF 檔案路徑
         bank_name: 銀行名稱
+        force_year_quarter: 強制指定年度季度（如 "114Q2"），優先使用此值
         
     Returns:
         資產品質資料列表（最多 8 筆資料）
@@ -404,16 +441,24 @@ def extract_asset_quality_data(pdf_path: str, bank_name: str) -> list[AssetQuali
             filename = os.path.basename(pdf_path)
             default_year, default_quarter = extract_year_quarter_from_filename(filename)
             
+            # 如果有強制指定的年度季度，優先使用
+            if force_year_quarter:
+                import re
+                match = re.match(r'(\d+)Q(\d+)', force_year_quarter)
+                if match:
+                    default_year = match.group(1)
+                    default_quarter = f"Q{match.group(2)}"
+            
+            # 強制使用檔名/指定的年度季度，不從 PDF 內容提取
+            year, quarter = default_year, default_quarter
+            
             # 遠東銀行專用解析器（文字被拆散成單字排列）
             if "遠東" in bank_name:
                 # 找資產品質頁面（通常是第3頁）
                 for page in pdf.pages:
                     text = page.extract_text() or ""
                     if "資產品質" in text:
-                        year, quarter = extract_year_quarter(text)
-                        if not year:
-                            year, quarter = default_year, default_quarter
-                        
+                        # 使用預設的年度季度
                         results = extract_feib_by_position(page, year, quarter, bank_name)
                         if results:
                             break
@@ -432,10 +477,8 @@ def extract_asset_quality_data(pdf_path: str, bank_name: str) -> list[AssetQuali
             for page, has_table in pages_info:
                 text = page.extract_text() or ""
                 
-                # 提取年度季度
-                year, quarter = extract_year_quarter(text)
-                if not year:
-                    year, quarter = default_year, default_quarter
+                # 強制使用檔名/指定的年度季度
+                # （不再從 PDF 內容提取，避免抓到錯誤時間段的資料）
                 
                 if has_table:
                     # 表格模式
@@ -478,18 +521,47 @@ def extract_asset_quality_data(pdf_path: str, bank_name: str) -> list[AssetQuali
     return results
 
 
+def _parse_single_pdf(pdf_file: Path, force_year_quarter: str = None) -> Tuple[str, List[AssetQualityRow]]:
+    """
+    解析單一 PDF 檔案（用於多工執行）
+    
+    Args:
+        pdf_file: PDF 檔案路徑
+        force_year_quarter: 強制指定年度季度（如 "114Q2"）
+        
+    Returns:
+        (銀行名稱, 資料列表)
+    """
+    # 從檔名提取銀行名稱
+    filename = pdf_file.stem
+    parts = filename.split('_')
+    if len(parts) >= 2:
+        bank_name = parts[1]
+    else:
+        bank_name = filename
+    
+    try:
+        rows = extract_asset_quality_data(str(pdf_file), bank_name, force_year_quarter)
+        return bank_name, rows
+    except Exception as e:
+        logger.exception(f"解析 PDF 失敗: {bank_name}")
+        return bank_name, []
+
+
 def generate_report(
     data_dir: str,
     output_path: str,
     year_quarter: str = None,
+    max_workers: int = 10,
 ) -> pd.DataFrame:
     """
-    生成資產品質報表。
+    生成資產品質報表（多工並行解析）。
     
     Args:
         data_dir: PDF 資料目錄（例如 data/114Q1）
         output_path: 輸出 Excel 檔案路徑
         year_quarter: 年度季度（例如 114Q1），如果為 None 則從目錄名稱推斷
+        max_workers: 最大並行數量（預設 10）
         
     Returns:
         包含所有銀行資料的 DataFrame
@@ -506,30 +578,45 @@ def generate_report(
     
     # 掃描所有 PDF 檔案
     pdf_files = sorted(data_path.glob("*.pdf"))
-    print(f"找到 {len(pdf_files)} 個 PDF 檔案")
+    total = len(pdf_files)
+    print(f"找到 {total} 個 PDF 檔案")
+    print(f"使用 {max_workers} 個執行緒並行解析")
     print("="*60)
+    logger.info(f"開始解析報表: {year_quarter}, 共 {total} 個 PDF, 並行數: {max_workers}")
     
-    for pdf_file in pdf_files:
-        # 從檔名提取銀行名稱
-        # 格式: "3_合作金庫商業銀行_114Q1.pdf"
-        filename = pdf_file.stem  # 移除 .pdf
-        parts = filename.split('_')
-        if len(parts) >= 2:
-            bank_name = parts[1]
-        else:
-            bank_name = filename
+    # 使用 ThreadPoolExecutor 進行多工解析
+    completed = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # 提交所有任務，傳入 year_quarter 強制指定年度季度
+        future_to_pdf = {
+            executor.submit(_parse_single_pdf, pdf_file, year_quarter): pdf_file 
+            for pdf_file in pdf_files
+        }
         
-        # 提取資料
-        rows = extract_asset_quality_data(str(pdf_file), bank_name)
-        if rows:
-            all_data.extend(rows)
-            print(f"✓ {bank_name}: {len(rows)} 筆資料")
-            success_count += 1
-        else:
-            fail_count += 1
+        # 收集結果
+        for future in as_completed(future_to_pdf):
+            completed += 1
+            try:
+                bank_name, rows = future.result()
+                if rows:
+                    all_data.extend(rows)
+                    print(f"[{completed:02d}/{total}] ✓ {bank_name}: {len(rows)} 筆資料")
+                    logger.info(f"解析成功: {bank_name}, {len(rows)} 筆")
+                    success_count += 1
+                else:
+                    print(f"[{completed:02d}/{total}] ✗ {bank_name}: 無資料")
+                    logger.warning(f"解析無資料: {bank_name}")
+                    fail_count += 1
+            except Exception as e:
+                pdf_file = future_to_pdf[future]
+                bank_name = pdf_file.stem.split('_')[1] if '_' in pdf_file.stem else pdf_file.stem
+                print(f"[{completed:02d}/{total}] ✗ {bank_name}: 錯誤 - {e}")
+                logger.exception(f"解析異常: {bank_name}")
+                fail_count += 1
     
     print("="*60)
     print(f"成功: {success_count}, 失敗: {fail_count}")
+    logger.info(f"解析完成: 成功 {success_count}, 失敗 {fail_count}")
     
     # 轉換為 DataFrame
     if all_data:
