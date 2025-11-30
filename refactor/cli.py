@@ -8,6 +8,7 @@
     python cli.py
 """
 
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -218,7 +219,7 @@ def download_single_bank(year: int, quarter: int) -> bool:
     print_info(f"正在下載 {bank_name} {year}Q{quarter} 財報...")
     
     downloader = BankDownloader(data_dir=str(get_data_dir()))
-    result = downloader.download(bank_name, year, quarter)
+    result = asyncio.run(downloader.download(bank_name, year, quarter))
     
     if result.status == DownloadStatus.SUCCESS:
         print_success(f"下載成功: {result.file_path}")
@@ -229,6 +230,33 @@ def download_single_bank(year: int, quarter: int) -> bool:
     else:
         print_error(f"下載失敗: {result.message}")
         return False
+
+
+async def _download_all_banks_async(downloader: BankDownloader, year: int, quarter: int) -> Tuple[int, int, list]:
+    """非同步下載所有銀行（內部函數）"""
+    success_count = 0
+    fail_count = 0
+    failed_banks = []
+    
+    total = len(BANK_DOWNLOADERS)
+    
+    for idx, bank_name in enumerate(BANK_DOWNLOADERS.keys(), 1):
+        print(f"[{idx:02d}/{total}] {bank_name}... ", end="", flush=True)
+        
+        result = await downloader.download(bank_name, year, quarter)
+        
+        if result.status == DownloadStatus.SUCCESS:
+            print(f"{Color.GREEN}成功{Color.RESET}")
+            success_count += 1
+        elif result.status == DownloadStatus.ALREADY_EXISTS:
+            print(f"{Color.YELLOW}已存在{Color.RESET}")
+            success_count += 1
+        else:
+            print(f"{Color.RED}失敗{Color.RESET} - {result.message}")
+            fail_count += 1
+            failed_banks.append(bank_name)
+    
+    return success_count, fail_count, failed_banks
 
 
 def download_all_banks(year: int, quarter: int) -> Tuple[int, int]:
@@ -247,27 +275,10 @@ def download_all_banks(year: int, quarter: int) -> Tuple[int, int]:
     
     downloader = BankDownloader(data_dir=str(get_data_dir()))
     
-    success_count = 0
-    fail_count = 0
-    failed_banks = []
-    
-    total = len(BANK_DOWNLOADERS)
-    
-    for idx, bank_name in enumerate(BANK_DOWNLOADERS.keys(), 1):
-        print(f"[{idx:02d}/{total}] {bank_name}... ", end="", flush=True)
-        
-        result = downloader.download(bank_name, year, quarter)
-        
-        if result.status == DownloadStatus.SUCCESS:
-            print(f"{Color.GREEN}成功{Color.RESET}")
-            success_count += 1
-        elif result.status == DownloadStatus.ALREADY_EXISTS:
-            print(f"{Color.YELLOW}已存在{Color.RESET}")
-            success_count += 1
-        else:
-            print(f"{Color.RED}失敗{Color.RESET} - {result.message}")
-            fail_count += 1
-            failed_banks.append(bank_name)
+    # 使用非同步函數執行下載
+    success_count, fail_count, failed_banks = asyncio.run(
+        _download_all_banks_async(downloader, year, quarter)
+    )
     
     print("-" * 50)
     print_info(f"下載完成！成功: {success_count}, 失敗: {fail_count}")
