@@ -1,6 +1,6 @@
 # 銀行財報系統 - 當前狀態報告
 
-> 更新日期：2025-11-30 10:42（修復 02 臺灣土地銀行下載器 + 修正 refactor 路徑）
+> 更新日期：2025-11-30 11:35（修復 04 第一銀行，強制有頭模式）
 
 ## 系統概覽
 
@@ -58,92 +58,104 @@
 
 ---
 
-## 各銀行狀態明細（113Q4 測試結果）
+## 各銀行狀態明細
 
-| 代碼 | 銀行名稱 | 下載 | 解析 | 財報網址 |
-|------|----------|------|------|----------|
-| 01 | 臺灣銀行 | ✅ | ✅ 8/8 | https://www.bot.com.tw/tw/about/financial-statements/quarterly-report |
-| 02 | 臺灣土地銀行 | ✅ | ✅ 8/8 | https://www.landbank.com.tw/Category/Items/財務業務資訊-財報 |
-| 03 | 合作金庫商業銀行 | ✅ | ✅ 8/8 | https://www.tcb-bank.com.tw/about-tcb/disclosure/bad-debt/asset-quality |
-| 04 | 第一商業銀行 | ✅ | ✅ 8/8 | https://www.firstbank.com.tw/sites/fcb/Statutory |
-| 05 | 華南商業銀行 | ⚠️ 無資料 | - | https://www.hnfhc.com.tw/HNFHC/ir/d.do |
-| 06 | 彰化商業銀行 | ⚠️ 無資料 | - | https://www.bankchb.com/frontend/finance.jsp |
-| 07 | 上海商業儲蓄銀行 | ⚠️ 無資料 | - | https://www.scsb.com.tw/content/about/about04_a_01.jsp |
-| 08 | 台北富邦銀行 | ✅ | ✅ 8/8 | https://www.fubon.com/banking/about/intro_FBB/Financial_status.htm |
-| 09 | 國泰世華商業銀行 | ❌ Timeout | - | https://www.cathaybk.com.tw/cathaybk/personal/about/news/announce/ |
-| 10 | 中國輸出入銀行 | ✅ | ⚠️ 3/8 | https://www.eximbank.com.tw/zh-tw/FinanceInfo/Finance/Pages/default.aspx |
-| 11 | 高雄銀行 | ✅ | ✅ 8/8 | https://www.bok.com.tw/-107 |
-| 12 | 兆豐國際商業銀行 | ✅ | ❌ 0/8 | https://www.megabank.com.tw/about/announcement/news/regulatory-disclosures/finance-report |
-| 13 | 花旗（台灣）銀行 | ❌ Timeout | - | https://www.citibank.com.tw/global_docs/chi/pressroom/financial_info/financial.htm |
-| 15 | 王道商業銀行 | ❌ Timeout | - | https://www.o-bank.com/common/regulation/regulation-financialreport |
-| 16 | 臺灣中小企業銀行 | ❌ 環境問題 | - | https://ir.tbb.com.tw/financial/quarterly-results |
-| 17 | 渣打國際商業銀行 | ✅ | ⚠️ 7/8 | https://www.sc.com/tw/about-us/investor-relations/ |
-| 18 | 台中商業銀行 | ❌ Timeout | - | https://www.tcbbank.com.tw/Site/intro/finReport/finReport.aspx |
-| 19 | 京城商業銀行 | ❌ 網路錯誤 | - | https://customer.ktb.com.tw/new/about/8d88e237 |
-| 20 | 匯豐(台灣)商業銀行 | ✅ | ✅ 8/8 | https://www.hsbc.com.tw/help/announcements/ |
-| 21 | 瑞興商業銀行 | ✅ | ❌ 0/8 | https://www.taipeistarbank.com.tw/StatutoryDisclosure/FinancialReports |
-| 22 | 華泰商業銀行 | ❌ 網路錯誤 | - | https://www.hwataibank.com.tw/public/public02-01/ |
-| 23 | 臺灣新光商業銀行 | ✅ | ❌ 0/8 | https://www.skbank.com.tw/QFI |
-| 24 | 陽信商業銀行 | ✅ | ✅ 8/8 | https://www.sunnybank.com.tw/net/Page/Smenu/4 |
-| 25 | 板信商業銀行 | ❌ 網路錯誤 | - | https://www.bop.com.tw/Footer/Financial_Report |
-| 26 | 三信商業銀行 | ⚠️ 無資料 | - | https://www.cotabank.com.tw/web/public/expose/#tab-財務業務資訊 |
-| 27 | 聯邦商業銀行 | ✅ | ❌ 0/8 | https://www.ubot.com.tw/investors |
-| 28 | 遠東國際商業銀行 | ⚠️ 無資料 | - | https://www.feib.com.tw/detail?id=349 |
-| 29 | 元大商業銀行 | ⚠️ 無資料 | - | https://www.yuantabank.com.tw/bank/bulletin/statutoryDisclosure/list.do |
-| 30 | 永豐商業銀行 | ✅ | ✅ 8/8 | https://bank.sinopac.com/sinopacBT/about/investor/financial-statement.html |
-| 31 | 玉山商業銀行 | ✅ | ✅ 8/8 | https://doc.twse.com.tw/server-java/t57sb01 |
-| 32 | 凱基商業銀行 | ✅ | ✅ 8/8 | https://www.kgibank.com.tw/zh-tw/about-us/financial-summary |
-| 33 | 星展(台灣)商業銀行 | ✅ | ❌ 0/8 | https://www.dbs.com.tw/personal-zh/legal-disclaimers-and-announcements.page |
-| 34 | 台新國際商業銀行 | ⚠️ 無資料 | - | https://www.taishinbank.com.tw/TSB/about-taishin/brief-introduction-to-the-bank/financeInfo |
-| 36 | 安泰商業銀行 | ⚠️ 無資料 | - | https://www.entiebank.com.tw/entie/disclosure-financial |
-| 37 | 中國信託商業銀行 | ✅ | ⚠️ 5/8 | https://www.ctbcbank.com |
-| 38 | 樂天國際商業銀行 | ❌ 環境問題 | - | https://www.rakuten-bank.com.tw/portal/other/disclosure |
-| 40 | 連線商業銀行 | ✅ | ✅ 8/8 | https://corp.linebank.com.tw/zh-tw/company-financial |
-| 41 | 將來商業銀行 | ❌ Timeout | - | https://www.nextbank.com.tw/disclosures/download/52831e76d4000000d9ee07510ffac025 |
+> 更新日期：2025-11-30 11:25
+
+| 代碼 | 銀行名稱 | 113Q4 下載 | 113Q4 解析 | 114Q1 下載 | 114Q1 解析 | 備註 |
+|------|----------|------------|------------|------------|------------|------|
+| 01 | 臺灣銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 02 | 臺灣土地銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 03 | 合作金庫商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 04 | 第一商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx，強制有頭模式 |
+| 05 | 華南商業銀行 | ⚠️ 無資料 | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 06 | 彰化商業銀行 | ⚠️ 無資料 | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 07 | 上海商業儲蓄銀行 | ⚠️ 無資料 | - | ✅ | ❌ 0/8 | 下載成功但解析失敗(特殊格式) |
+| 08 | 台北富邦銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 09 | 國泰世華商業銀行 | ❌ Timeout | - | ❌ Timeout | - | 無頭模式 Timeout |
+| 10 | 中國輸出入銀行 | ✅ | ⚠️ 3/8 | ✅ | ⚠️ 3/8 | 已輸出 xlsx (政策性銀行，僅3類別) |
+| 11 | 高雄銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 12 | 兆豐國際商業銀行 | ✅ | ❌ 0/8 | ✅ | ❌ 0/8 | 下載成功但找不到資產品質頁面 |
+| 13 | 花旗（台灣）銀行 | ❌ Timeout | - | ❌ Timeout | - | 無頭模式 Timeout |
+| 15 | 王道商業銀行 | ❌ Timeout | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 16 | 臺灣中小企業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 17 | 渣打國際商業銀行 | ✅ | ⚠️ 7/8 | ✅ | ⚠️ 7/8 | 已輸出 xlsx (缺1類別) |
+| 18 | 台中商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 19 | 京城商業銀行 | ❌ Timeout | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 20 | 匯豐(台灣)商業銀行 | ✅ | ✅ 8/8 | ✅ | ❌ 0/8 | 已輸出 xlsx (僅113Q4)，114Q1解析失敗 |
+| 21 | 瑞興商業銀行 | ✅ | ❌ 0/8 | ✅ | ❌ 0/8 | 下載成功但找不到資產品質頁面 |
+| 22 | 華泰商業銀行 | ⚠️ 無資料 | - | ⚠️ 無資料 | - | 網站無對應季度資料 |
+| 23 | 臺灣新光商業銀行 | ✅ | ❌ 0/8 | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 24 | 陽信商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 25 | 板信商業銀行 | ⚠️ 無資料 | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 26 | 三信商業銀行 | ⚠️ 無資料 | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 27 | 聯邦商業銀行 | ✅ | ❌ 0/8 | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1)，113Q4 PDF格式特殊 |
+| 28 | 遠東國際商業銀行 | ⚠️ 無資料 | - | ⚠️ 無資料 | - | 網站無對應季度資料 |
+| 29 | 元大商業銀行 | ⚠️ 無資料 | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 30 | 永豐商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 31 | 玉山商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 32 | 凱基商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 33 | 星展(台灣)商業銀行 | ✅ | ❌ 0/8 | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1)，113Q4格式特殊 |
+| 34 | 台新國際商業銀行 | ⚠️ 無資料 | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 36 | 安泰商業銀行 | ⚠️ 無資料 | - | ✅ | ✅ 8/8 | 已輸出 xlsx (僅114Q1) |
+| 37 | 中國信託商業銀行 | ✅ | ⚠️ 5/8 | ✅ | ❌ 0/8 | 已輸出 xlsx (僅113Q4 5筆)，114Q1格式特殊 |
+| 38 | 樂天國際商業銀行 | ✅ | ✅ 8/8 | ✅ | ✅ 8/8 | 已輸出 xlsx |
+| 40 | 連線商業銀行 | ✅ | ✅ 8/8 | ⚠️ 無資料 | - | 已輸出 xlsx (僅113Q4) |
+| 41 | 將來商業銀行 | ❌ Timeout | - | ❌ Timeout | - | 無頭模式 Timeout |
 
 > **註**：代碼 14、35、39 無對應銀行
 
 ---
 
-## 113Q4 測試統計
+## 測試統計 (2025-11-30)
 
-### 下載結果
+### 113Q4 下載結果
 
-| 狀態 | 數量 | 百分比 |
-|------|------|--------|
-| ✅ 成功 | 18 家 | 47% |
-| ⚠️ 無資料 | 10 家 | 26% |
-| ❌ 錯誤 | 10 家 | 26% |
+| 狀態 | 數量 | 說明 |
+|------|------|------|
+| ✅ 成功 | 24 家 | 下載成功 |
+| ⚠️ 無資料 | 10 家 | 網站無該季度資料 |
+| ❌ 錯誤 | 4 家 | Timeout |
 
-**成功下載（18 家）**：
-合庫、一銀、富邦、輸出入、高雄、兆豐、渣打、匯豐、瑞興、新光、陽信、聯邦、永豐、玉山、凱基、星展、中信、連線
+### 114Q1 下載結果
 
-**無資料（10 家）**：
-臺銀、土銀、華銀、彰銀、上海、三信、遠東、元大、台新、安泰
+| 狀態 | 數量 | 說明 |
+|------|------|------|
+| ✅ 成功 | 30 家 | 下載成功 |
+| ⚠️ 無資料 | 4 家 | 網站無該季度資料 |
+| ❌ 錯誤 | 4 家 | Timeout |
 
-**錯誤（10 家）**：
-- Timeout：國泰、花旗、王道、台中、將來（5 家）
-- 網路錯誤：京城、華泰、板信（3 家）
-- 環境問題：中小企銀(wget)、樂天(chromium)（2 家）
+### 解析結果統計
 
-### 解析結果（僅下載成功的 18 家）
+| 狀態 | 113Q4 | 114Q1 |
+|------|-------|-------|
+| ✅ 完整 (8/8) | 17 家 | 24 家 |
+| ⚠️ 部分成功 | 3 家 | 2 家 |
+| ❌ 失敗 (0/8) | 4 家 | 4 家 |
 
-| 狀態 | 數量 | 百分比 |
-|------|------|--------|
-| ✅ 完整 (8/8) | 10 家 | 56% |
-| ⚠️ 部分成功 | 3 家 | 17% |
-| ❌ 失敗 | 5 家 | 28% |
+### 輸出檔案統計
 
-**完整解析（10 家）**：
-合庫、一銀、富邦、高雄、匯豐、陽信、永豐、玉山、凱基、連線
+- 總輸出檔案：32 個 xlsx
+- 完整資料 (16筆)：13 家銀行
+- 部分資料：19 家銀行
 
-**部分解析（3 家）**：
-- 輸出入(3/8)：政策性銀行
-- 渣打(7/8)：缺少 1 類別
-- 中信(5/8)：缺少 3 類別
+### 無法下載的銀行 (需修復)
 
-**解析失敗（5 家）**：
-兆豐、瑞興、新光、聯邦、星展
+| 銀行 | 113Q4 | 114Q1 | 問題 |
+|------|-------|-------|------|
+| 09 國泰世華 | ❌ | ❌ | Timeout (無頭模式) |
+| 13 花旗(台灣) | ❌ | ❌ | Timeout (無頭模式) |
+| 41 將來銀行 | ❌ | ❌ | Timeout (無頭模式) |
+
+### 下載成功但解析失敗 (需修復解析器)
+
+| 銀行 | 113Q4 | 114Q1 | 問題 |
+|------|-------|-------|------|
+| 07 上海商銀 | - | ❌ | 特殊PDF格式 |
+| 12 兆豐銀行 | ❌ | ❌ | 找不到資產品質頁面 |
+| 20 匯豐銀行 | ✅ | ❌ | 114Q1 格式變更 |
+| 21 瑞興銀行 | ❌ | ❌ | 找不到資產品質頁面 |
+| 37 中國信託 | ⚠️5/8 | ❌ | 114Q1 格式變更 |
 
 ---
 

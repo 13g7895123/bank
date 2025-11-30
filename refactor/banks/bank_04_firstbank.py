@@ -12,7 +12,8 @@ class FirstBankDownloader(BaseBankDownloader):
     bank_name = "第一商業銀行"
     bank_code = 4
     bank_url = "https://www.firstbank.com.tw/sites/fcb/Statutory"
-    headless = True  # 預設無頭模式，失敗時自動重試有頭模式
+    headless = False  # 強制使用有頭模式（網站有反爬蟲機制，無頭模式無法載入）
+    retry_with_head = False  # 已經是有頭模式，不需要重試
     
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
