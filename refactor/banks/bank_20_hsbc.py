@@ -18,10 +18,10 @@ class HSBCDownloader(BaseBankDownloader):
         quarter_map = {1: "第一季", 2: "第二季", 3: "第三季", 4: "第四季"}
         quarter_text = quarter_map.get(quarter, "")
         
-        # 前往財報頁面
-        await page.goto(self.bank_url)
-        await page.wait_for_load_state("networkidle")
-        await page.wait_for_timeout(3000)
+        # 前往財報頁面（增加 timeout）
+        await page.goto(self.bank_url, timeout=120000)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(5000)
         
         # 搜尋目標連結 - 格式: "2025年第一季重要財務業務資訊"
         target_text = f"{year_ad}年{quarter_text}重要財務業務資訊"
@@ -31,7 +31,7 @@ class HSBCDownloader(BaseBankDownloader):
         
         pdf_url = None
         for link in links:
-            text = await (await link.inner_text()).strip()
+            text = (await link.inner_text()).strip()
             href = await link.get_attribute("href") or ""
             
             # 匹配目標文字

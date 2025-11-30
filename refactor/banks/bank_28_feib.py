@@ -41,7 +41,7 @@ class FEIBDownloader(BaseBankDownloader):
         target_value = None
         
         for i in range(await options.count()):
-            text = await options.nth(i).inner_text().strip()
+            text = (await options.nth(i).inner_text()).strip()
             if search_text in text:
                 target_value = await options.nth(i).get_attribute("value")
                 break

@@ -49,7 +49,7 @@ class KGIBankDownloader(BaseBankDownloader):
         pdf_url = self._build_pdf_url(year_ad, quarter)
         
         # 驗證 URL 是否可用
-        response = page.request.head(pdf_url)
+        response = await page.request.head(pdf_url)
         if response.ok:
             return await self.download_pdf_from_url(page, pdf_url, year, quarter)
         

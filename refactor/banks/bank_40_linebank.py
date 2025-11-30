@@ -30,13 +30,13 @@ class LineBankDownloader(BaseBankDownloader):
             )
         
         # 找附件區
-        attachments = tab_contents[1].query_selector_all("div.attachments.layout-row")
+        attachments = await tab_contents[1].query_selector_all("div.attachments.layout-row")
         
         pdf_url = None
         for attachment in attachments:
-            link = attachment.query_selector("a")
+            link = await attachment.query_selector("a")
             if link:
-                title = await link.get_attribute("title") or link.inner_text()
+                title = await link.get_attribute("title") or await link.inner_text()
                 if str(year) in title and quarter_text in title:
                     pdf_href = await link.get_attribute("href")
                     pdf_url = pdf_href if pdf_href.startswith("http") else f"https://corp.linebank.com.tw{pdf_href}"

@@ -27,7 +27,7 @@ class SKBankDownloader(BaseBankDownloader):
         li_elements = await page.query_selector_all("ul li")
         
         for li in li_elements:
-            link = li.query_selector("a")
+            link = await li.query_selector("a")
             if link:
                 link_text = await link.inner_text()
                 if str(year) in link_text and quarter_text in link_text:

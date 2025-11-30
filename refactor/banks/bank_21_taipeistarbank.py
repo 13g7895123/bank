@@ -25,7 +25,7 @@ class TaipeiStarBankDownloader(BaseBankDownloader):
         
         pdf_url = None
         for td in tds:
-            link = td.query_selector("a")
+            link = await td.query_selector("a")
             if link:
                 title = await link.inner_text()
                 if str(year) in title and quarter_text in title:

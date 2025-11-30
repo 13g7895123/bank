@@ -34,12 +34,12 @@ class EntieBankDownloader(BaseBankDownloader):
                 message="找不到資料表格"
             )
         
-        rows = table.query_selector_all("tr")
+        rows = await table.query_selector_all("tr")
         current_year = None
         pdf_url = None
         
         for row in rows:
-            text = await (await row.inner_text()).strip()
+            text = (await row.inner_text()).strip()
             
             # 檢查是否為年度行 (格式: "114年度")
             if "年度" in text and text.replace("年度", "").isdigit():
@@ -48,9 +48,9 @@ class EntieBankDownloader(BaseBankDownloader):
             
             # 如果當前年度匹配，找季度連結
             if current_year == year:
-                links = row.query_selector_all("a")
+                links = await row.query_selector_all("a")
                 for link in links:
-                    link_text = await (await link.inner_text()).strip()
+                    link_text = (await link.inner_text()).strip()
                     if link_text == quarter_text:
                         href = await link.get_attribute("href")
                         pdf_url = href if href.startswith("http") else f"https://www.entiebank.com.tw{href}"

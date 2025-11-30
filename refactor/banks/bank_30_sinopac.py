@@ -51,14 +51,14 @@ class SinoPacDownloader(BaseBankDownloader):
                 message="找不到資料列表"
             )
         
-        items = sheet_list.query_selector_all("li")
+        items = await sheet_list.query_selector_all("li")
         
         # 優先尋找個體財報，沒有的話才用合併財報
         target_link = None
         fallback_link = None
         
         for item in items:
-            link = item.query_selector("a")
+            link = await item.query_selector("a")
             if not link:
                 continue
             

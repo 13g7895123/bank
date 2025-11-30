@@ -392,14 +392,7 @@ def handle_download():
     if choice == "1":
         download_single_bank(year, quarter)
     elif choice == "ALL":
-        # 詢問並行數量
-        parallel_input = get_input("請輸入並行下載數量 (預設 5，最大 10)：")
-        try:
-            max_concurrent = int(parallel_input) if parallel_input else 5
-            max_concurrent = min(max(1, max_concurrent), 10)  # 限制 1-10
-        except ValueError:
-            max_concurrent = 5
-        download_all_banks(year, quarter, max_concurrent)
+        download_all_banks(year, quarter, max_concurrent=10)  # 預設並行 10
     elif choice == "0":
         return
     else:

@@ -39,8 +39,8 @@ class TaishinBankDownloader(BaseBankDownloader):
                 message="找不到資料區塊"
             )
         
-        text_blocks = table.query_selector_all("div.text-block")
-        btn_blocks = table.query_selector_all("div.btnnn")
+        text_blocks = await table.query_selector_all("div.text-block")
+        btn_blocks = await table.query_selector_all("div.btnnn")
         
         pdf_url = None
         for i, text_div in enumerate(text_blocks):
@@ -49,7 +49,7 @@ class TaishinBankDownloader(BaseBankDownloader):
             text = await text_div.inner_text()
             
             if str(year_ad) in text and f"Q{quarter}" in text and "財務業務資訊" in text:
-                link = btn_blocks[i].query_selector("a")
+                link = await btn_blocks[i].query_selector("a")
                 if link:
                     pdf_href = await link.get_attribute("href")
                     pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.taishinbank.com.tw{pdf_href}"

@@ -79,7 +79,7 @@ class TaichungBankDownloader(BaseBankDownloader):
         pdf_url = None
         
         # 找所有 tr 元素
-        tr_elements = page.locator("table tbody tr").all()
+        tr_elements = await page.locator("table tbody tr").all()
         
         for tr in tr_elements:
             # 找 tr > td
@@ -90,7 +90,7 @@ class TaichungBankDownloader(BaseBankDownloader):
             # td 底下有多個 div
             # 第一個 div 中有一個 div.year-title
             # 第二個 div 包含季度下載
-            td_divs = td.locator("> div").all()
+            td_divs = await td.locator("> div").all()
             
             if len(td_divs) < 2:
                 continue
@@ -114,15 +114,15 @@ class TaichungBankDownloader(BaseBankDownloader):
             quarter_divs = await quarters_div.locator("> div").all()
             
             for q_div in quarter_divs:
-                q_text = await (await q_div.inner_text()).strip()
+                q_text = (await q_div.inner_text()).strip()
                 
                 if target_quarter in q_text:
                     # 找到目標季度，取得 a 元素
-                    a_elements = q_div.locator("a").all()
+                    a_elements = await q_div.locator("a").all()
                     
                     if len(a_elements) >= 1:
                         # 如果有多個 a 元素，使用第一個
-                        href = a_elements[0].get_attribute("href")
+                        href = await a_elements[0].get_attribute("href")
                         if href:
                             if href.startswith("http"):
                                 pdf_url = href

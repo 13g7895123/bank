@@ -48,7 +48,7 @@ class KTBDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年 的資料"
             )
         
-        if target_index >= tables.count():
+        if target_index >= await tables.count():
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message=f"找不到 {year}年 的表格"
@@ -64,7 +64,7 @@ class KTBDownloader(BaseBankDownloader):
         target_quarter_text = quarter_map.get(quarter, "")
         
         target_link = None
-        for i in range(1, rows.count()):  # 跳過標題行
+        for i in range(1, await rows.count()):  # 跳過標題行
             row_text = await rows.nth(i).inner_text()
             if target_quarter_text in row_text:
                 # 找第二個 td 中的連結（母子公司合併報表）

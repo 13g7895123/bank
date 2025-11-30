@@ -36,7 +36,7 @@ class NextBankDownloader(BaseBankDownloader):
         target_index = -1
         
         for i in range(await b_tags.count()):
-            text = await b_tags.nth(i).inner_text().strip()
+            text = (await b_tags.nth(i).inner_text()).strip()
             if search_text in text:
                 target_index = i
                 break
@@ -51,7 +51,7 @@ class NextBankDownloader(BaseBankDownloader):
         # 因為每個季度區塊都有一個「資產品質」連結，按順序對應
         asset_quality_links = page.locator('a:has-text("資產品質")')
         
-        if target_index >= asset_quality_links.count():
+        if target_index >= await asset_quality_links.count():
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message=f"找不到 {year}年{quarter_text} 的資產品質連結"

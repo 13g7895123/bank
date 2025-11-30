@@ -29,7 +29,7 @@ class UBOTDownloader(BaseBankDownloader):
                 message="找不到表格"
             )
         
-        tbody = table.query_selector("tbody")
+        tbody = await table.query_selector("tbody")
         if not tbody:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
@@ -38,10 +38,10 @@ class UBOTDownloader(BaseBankDownloader):
         
         # 在 tbody 中找到目標年度的 tr
         target_row = None
-        rows = tbody.query_selector_all("tr")
+        rows = await tbody.query_selector_all("tr")
         
         for row in rows:
-            first_td = row.query_selector("td")
+            first_td = await row.query_selector("td")
             if first_td:
                 td_text = (await first_td.text_content()).strip()
                 if f"{year}年度" in td_text:
@@ -56,7 +56,7 @@ class UBOTDownloader(BaseBankDownloader):
         
         # 取得所有 td，第一個是年度，後面依序是 Q1, Q2, Q3, Q4(全年度)
         # Q1 = td[1], Q2 = td[2], Q3 = td[3], Q4 = td[4]
-        tds = target_row.query_selector_all("td")
+        tds = await target_row.query_selector_all("td")
         
         if len(tds) <= quarter:
             return DownloadResult(
@@ -67,7 +67,7 @@ class UBOTDownloader(BaseBankDownloader):
         target_td = tds[quarter]  # quarter 1-4 對應 td[1]-td[4]
         
         # 在目標 td 中找 a 元素
-        target_link = target_td.query_selector("a")
+        target_link = await target_td.query_selector("a")
         
         if not target_link:
             return DownloadResult(

@@ -105,8 +105,8 @@ def parse_args():
     parser.add_argument(
         "--parallel", "-p",
         type=int,
-        default=5,
-        help="並行下載數量（預設: 5）"
+        default=10,
+        help="並行下載數量（預設: 10）"
     )
     
     parser.add_argument(

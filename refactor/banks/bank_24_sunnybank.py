@@ -52,14 +52,14 @@ class SunnyBankDownloader(BaseBankDownloader):
         pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.sunnybank.com.tw{pdf_href}"
         
         # 點擊連結觸發下載（完整流程）
-        with page.expect_download() as download_info:
+        async with page.expect_download() as download_info:
             await target_link.click()
         
-        download = download_info.value
+        download = await download_info.value
         
         # 儲存檔案
         save_path = self.get_file_path(year, quarter)
-        download.save_as(save_path)
+        await download.save_as(save_path)
         
         return DownloadResult(
             status=DownloadStatus.SUCCESS,

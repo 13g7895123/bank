@@ -40,7 +40,7 @@ class YuantaBankDownloader(BaseBankDownloader):
         target_link = None
         
         for i in range(await links.count()):
-            text = await links.nth(i).inner_text().strip()
+            text = (await links.nth(i).inner_text()).strip()
             for pattern in search_patterns:
                 if pattern in text:
                     target_link = links.nth(i)
