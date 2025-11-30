@@ -1,6 +1,11 @@
 """
 板信商業銀行 (25) - Bank of Panhsin
-網址: https://www.bop.com.tw/Footer/Financial_Report
+網址: https://www.bop.com.tw/Footer/Financial_Report?tni=110&refid=null
+
+網頁結構：
+- 第二個表格是「重要財務業務資訊」（季度報告）
+- 表頭: 年度, 第一季, 第二季, 第三季, 第四季
+- 連結格式: 113_Q4.pdf
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
 from playwright.sync_api import Page
@@ -18,54 +23,40 @@ class BOPDownloader(BaseBankDownloader):
         
         # 前往財報頁面
         page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_timeout(3000)
         
-        # 找第二個表格
-        tables = page.query_selector_all("table.table.table-hover")
-        if len(tables) < 2:
+        # 搜尋連結：格式為 113_Q4.pdf
+        search_text = f"{year}_Q{quarter}.pdf"
+        
+        links = page.locator("a")
+        target_link = None
+        
+        for i in range(links.count()):
+            text = links.nth(i).inner_text().strip()
+            if search_text in text:
+                target_link = links.nth(i)
+                break
+        
+        if not target_link:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
-                message="找不到資料表格"
+                message=f"找不到 {year}年{quarter_text} 的資料"
             )
         
-        tbody = tables[1].query_selector("tbody")
-        if not tbody:
+        href = target_link.get_attribute("href")
+        if not href:
             return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到表格內容"
+                status=DownloadStatus.ERROR,
+                message="無法取得下載連結"
             )
         
-        first_row = tbody.query_selector("tr")
-        if not first_row:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到資料列"
-            )
-        
-        tds = first_row.query_selector_all("td")
-        if len(tds) <= quarter:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"找不到 {quarter_text} 的資料"
-            )
-        
-        # 檢查年度
-        year_text = tds[0].inner_text()
-        if str(year) not in year_text:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"尚無 {year}年 的資料"
-            )
-        
-        # 取得 PDF 連結
-        pdf_link = tds[quarter].query_selector("a")
-        if not pdf_link:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"找不到 {quarter_text} 的 PDF 連結"
-            )
-        
-        pdf_href = pdf_link.get_attribute("href")
-        pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.bop.com.tw/{pdf_href.lstrip('/')}"
+        # 處理相對路徑
+        if href.startswith("../"):
+            pdf_url = f"https://www.bop.com.tw/{href.replace('../', '')}"
+        elif not href.startswith("http"):
+            pdf_url = f"https://www.bop.com.tw/{href.lstrip('/')}"
+        else:
+            pdf_url = href
         
         return self.download_pdf_from_url(page, pdf_url, year, quarter)

@@ -1,6 +1,11 @@
 """
 安泰商業銀行 (36) - EnTie Commercial Bank
 網址: https://www.entiebank.com.tw/entie/disclosure-financial
+
+網頁結構：
+- 預設顯示「財務業務資訊」tab
+- 表格格式: 年度標題行 + 季度資料行
+- Q4 對應「年度」
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
 from playwright.sync_api import Page
@@ -18,51 +23,46 @@ class EntieBankDownloader(BaseBankDownloader):
         
         # 前往財報頁面
         page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(3000)
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_timeout(5000)
         
-        # 點擊第二個 tab
-        tabs = page.query_selector_all(".tabsTitleName")
-        if len(tabs) >= 2:
-            tabs[1].click()
-            page.wait_for_timeout(1000)
+        # 搜尋連結
+        # Q4 對應「年度」，Q1-Q3 對應「第X季」
+        if quarter == 4:
+            search_patterns = [f"{year}年度", f"{year}年第四季"]
+        else:
+            search_patterns = [f"{quarter_text}"]
         
-        # 找表格
-        rows = page.query_selector_all("tbody tr")
-        if len(rows) < 2:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message="找不到資料表格"
-            )
+        # 找所有連結
+        links = page.locator("a")
+        target_link = None
         
-        # 檢查年度 (第一列)
-        year_row = rows[0]
-        year_text = year_row.inner_text()
+        for i in range(links.count()):
+            text = links.nth(i).inner_text().strip()
+            href = links.nth(i).get_attribute("href") or ""
+            
+            # 檢查是否匹配年度和季度
+            if str(year) in text or str(year) in href:
+                for pattern in search_patterns:
+                    if pattern in text:
+                        target_link = links.nth(i)
+                        break
+            if target_link:
+                break
         
-        if str(year) not in year_text:
-            return DownloadResult(
-                status=DownloadStatus.NO_DATA,
-                message=f"尚無 {year}年 的資料"
-            )
-        
-        # 找第二列的資料
-        data_row = rows[1]
-        tds = data_row.query_selector_all("td")
-        
-        pdf_url = None
-        for td in tds:
-            link = td.query_selector("a")
-            if link:
-                link_text = link.inner_text()
-                if quarter_text in link_text:
-                    pdf_href = link.get_attribute("href")
-                    pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.entiebank.com.tw{pdf_href}"
-                    break
-        
-        if not pdf_url:
+        if not target_link:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message=f"找不到 {year}年{quarter_text} 的資料"
             )
+        
+        href = target_link.get_attribute("href")
+        if not href:
+            return DownloadResult(
+                status=DownloadStatus.ERROR,
+                message="無法取得下載連結"
+            )
+        
+        pdf_url = href if href.startswith("http") else f"https://www.entiebank.com.tw{href}"
         
         return self.download_pdf_from_url(page, pdf_url, year, quarter)
