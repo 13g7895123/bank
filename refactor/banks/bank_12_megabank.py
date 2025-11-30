@@ -56,7 +56,7 @@ class MegaBankDownloader(BaseBankDownloader):
         await page.wait_for_load_state("networkidle")
         await page.wait_for_timeout(2000)
         
-        # 步驟2: 找「資產品質」的連結並點擊
+        # 步驟2: 找「資產品質」的連結
         # 格式: title="下載pdf檔案 資產品質 另開新視窗"
         asset_link = page.locator('a[title="下載pdf檔案 資產品質 另開新視窗"]')
         
@@ -66,32 +66,8 @@ class MegaBankDownloader(BaseBankDownloader):
                 message="找不到資產品質連結"
             )
         
-        # 點擊進入 PDF 頁面
-        await asset_link.first.click()
-        await page.wait_for_load_state("networkidle")
-        await page.wait_for_timeout(2000)
-        
-        # 步驟3: 取得 PDF URL（當前頁面應該就是 PDF 或有 PDF 連結）
-        current_url = page.url
-        
-        # 如果當前 URL 就是 PDF
-        if current_url.endswith('.pdf'):
-            pdf_url = current_url
-        else:
-            # 找頁面中的 PDF 連結
-            pdf_link = page.locator('a[href*=".pdf"]').first
-            if await pdf_link.count() == 0:
-                # 嘗試找 embed 或 iframe 中的 PDF
-                embed = page.locator('embed[src*=".pdf"], iframe[src*=".pdf"]').first
-                if await embed.count() > 0:
-                    pdf_url = await embed.get_attribute("src")
-                else:
-                    return DownloadResult(
-                        status=DownloadStatus.NO_DATA,
-                        message="找不到 PDF 連結"
-                    )
-            else:
-                pdf_url = await pdf_link.get_attribute("href")
+        # 直接取得 PDF URL（不點擊，因為連結會另開新視窗）
+        pdf_url = await asset_link.first.get_attribute("href")
         
         if not pdf_url:
             return DownloadResult(
