@@ -1,6 +1,10 @@
 """
 華南商業銀行 (5) - Hua Nan Commercial Bank
 網址: https://www.hnfhc.com.tw/HNFHC/ir/d.do
+
+網頁結構：
+- 有年份下拉選單 (id=year)，需先切換到對應年份
+- 下載連結 title 格式: "下載 華南銀行2025年第1季合併財務報告.pdf"
 """
 import subprocess
 import os
@@ -27,9 +31,15 @@ class HNCBDownloader(BaseBankDownloader):
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(2000)
         
-        # 建立搜尋的 title 關鍵字
-        # 格式: "下載 華南銀行2025年第3季合併財務報告.pdf"
-        # 季度對應: Q1=第1季, Q2=第2季, Q3=第3季, Q4=第4季 或 全年度
+        # 步驟1: 切換年份下拉選單
+        year_select = page.locator('select#year')
+        if year_select.count() > 0:
+            year_select.select_option(str(western_year))
+            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(2000)
+        
+        # 步驟2: 建立搜尋的 title 關鍵字
+        # 格式: "下載 華南銀行2025年第1季合併財務報告.pdf"
         quarter_num = quarter
         
         search_keywords = [
