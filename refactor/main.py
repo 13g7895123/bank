@@ -26,7 +26,9 @@
 
 import argparse
 import asyncio
+import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # 將 refactor 目錄加入路徑
@@ -35,6 +37,38 @@ sys.path.insert(0, str(Path(__file__).parent))
 from downloader import BankDownloader, BANK_CODES
 from report_generator import generate_report
 from banks.base import DownloadStatus
+
+
+# ============================================================
+# Logging 設定
+# ============================================================
+
+def setup_logging() -> logging.Logger:
+    """設定 logging"""
+    log_dir = Path(__file__).parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+    
+    log_file = log_dir / f"main_{datetime.now().strftime('%Y%m%d')}.log"
+    
+    logger = logging.getLogger("bank_main")
+    logger.setLevel(logging.DEBUG)
+    
+    # 避免重複加入 handler
+    if not logger.handlers:
+        # 檔案 handler（記錄所有層級）
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setLevel(logging.DEBUG)
+        file_formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+    
+    return logger
+
+# 初始化 logger
+logger = setup_logging()
 
 
 def parse_args():
@@ -115,15 +149,31 @@ async def run_download(
     print(f"\n{'='*60}")
     print(f"開始下載 {year}Q{quarter} 財報（並行數: {max_concurrent}）")
     print(f"{'='*60}")
+    logger.info(f"開始下載: {year}Q{quarter}, 並行數: {max_concurrent}")
     
-    if bank_codes:
-        # 下載指定銀行
-        results = await downloader.download_by_codes(bank_codes, year, quarter, max_concurrent)
-    else:
-        # 下載所有銀行
-        results = await downloader.download_all(year, quarter, max_concurrent)
-    
-    return results
+    try:
+        if bank_codes:
+            # 下載指定銀行
+            logger.info(f"指定銀行代碼: {bank_codes}")
+            results = await downloader.download_by_codes(bank_codes, year, quarter, max_concurrent)
+        else:
+            # 下載所有銀行
+            logger.info("下載所有銀行")
+            results = await downloader.download_all(year, quarter, max_concurrent)
+        
+        # 記錄結果
+        for bank_name, result in results.items():
+            if result.status == DownloadStatus.SUCCESS:
+                logger.info(f"下載成功: {bank_name}")
+            elif result.status == DownloadStatus.ALREADY_EXISTS:
+                logger.info(f"檔案已存在: {bank_name}")
+            else:
+                logger.error(f"下載失敗: {bank_name} - {result.message}")
+        
+        return results
+    except Exception as e:
+        logger.exception(f"下載過程發生異常")
+        raise
 
 
 def run_report(year_quarter: str):
@@ -135,14 +185,24 @@ def run_report(year_quarter: str):
     print(f"\n{'='*60}")
     print(f"開始生成 {year_quarter} 報表")
     print(f"{'='*60}")
+    logger.info(f"開始生成報表: {year_quarter}")
     
     if not data_dir.exists():
         print(f"[錯誤] 資料目錄不存在: {data_dir}")
         print("請先執行下載任務。")
+        logger.error(f"資料目錄不存在: {data_dir}")
         return None
     
-    df = generate_report(str(data_dir), str(output_path))
-    return df
+    try:
+        df = generate_report(str(data_dir), str(output_path))
+        if df is not None and not df.empty:
+            logger.info(f"報表生成成功: {output_path}, 共 {len(df)} 筆資料")
+        else:
+            logger.warning(f"報表生成完成但無資料")
+        return df
+    except Exception as e:
+        logger.exception(f"報表生成失敗")
+        raise
 
 
 def parse_bank_input(banks: list) -> list:
@@ -174,38 +234,48 @@ async def main():
     """主程式"""
     args = parse_args()
     
-    year_quarter = args.year_quarter
-    year, quarter = parse_year_quarter(year_quarter)
-    
-    print(f"\n銀行財報自動化系統（非同步版本）")
-    print(f"年度季度: {year_quarter}")
-    print(f"並行數量: {args.parallel}")
-    
-    bank_codes = None
-    if args.banks:
-        bank_codes = parse_bank_input(args.banks)
-        if bank_codes:
-            print(f"指定銀行: {[BANK_CODES[c] for c in bank_codes]}")
-    
-    # 執行下載
-    if not args.report_only:
-        results = await run_download(year, quarter, bank_codes, args.parallel)
+    try:
+        year_quarter = args.year_quarter
+        year, quarter = parse_year_quarter(year_quarter)
         
-        # 統計結果
-        success = sum(1 for r in results.values() if r.status == DownloadStatus.SUCCESS)
-        already = sum(1 for r in results.values() if r.status == DownloadStatus.ALREADY_EXISTS)
-        failed = len(results) - success - already
-        print(f"\n下載統計: 成功 {success}, 已存在 {already}, 失敗 {failed}")
-    
-    # 生成報表
-    if not args.download_only:
-        df = run_report(year_quarter)
-        if df is not None and not df.empty:
-            print(f"\n報表已生成，共 {len(df)} 筆資料")
-    
-    print(f"\n{'='*60}")
-    print("處理完成！")
-    print(f"{'='*60}")
+        print(f"\n銀行財報自動化系統（非同步版本）")
+        print(f"年度季度: {year_quarter}")
+        print(f"並行數量: {args.parallel}")
+        logger.info(f"程式啟動: {year_quarter}, 並行數: {args.parallel}")
+        
+        bank_codes = None
+        if args.banks:
+            bank_codes = parse_bank_input(args.banks)
+            if bank_codes:
+                print(f"指定銀行: {[BANK_CODES[c] for c in bank_codes]}")
+                logger.info(f"指定銀行: {[BANK_CODES[c] for c in bank_codes]}")
+        
+        # 執行下載
+        if not args.report_only:
+            results = await run_download(year, quarter, bank_codes, args.parallel)
+            
+            # 統計結果
+            success = sum(1 for r in results.values() if r.status == DownloadStatus.SUCCESS)
+            already = sum(1 for r in results.values() if r.status == DownloadStatus.ALREADY_EXISTS)
+            failed = len(results) - success - already
+            print(f"\n下載統計: 成功 {success}, 已存在 {already}, 失敗 {failed}")
+            logger.info(f"下載統計: 成功 {success}, 已存在 {already}, 失敗 {failed}")
+        
+        # 生成報表
+        if not args.download_only:
+            df = run_report(year_quarter)
+            if df is not None and not df.empty:
+                print(f"\n報表已生成，共 {len(df)} 筆資料")
+        
+        print(f"\n{'='*60}")
+        print("處理完成！")
+        print(f"{'='*60}")
+        logger.info("程式執行完成")
+        
+    except Exception as e:
+        print(f"\n[錯誤] 程式執行失敗: {e}")
+        logger.exception("程式執行失敗")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -9,10 +9,12 @@
 """
 
 import asyncio
+import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from dataclasses import dataclass
 from enum import Enum
 
@@ -22,6 +24,38 @@ sys.path.insert(0, str(Path(__file__).parent))
 from downloader import BankDownloader, BANK_CODES, BANK_DOWNLOADERS
 from banks.base import DownloadStatus
 from report_generator import generate_report
+
+
+# ============================================================
+# Logging 設定
+# ============================================================
+
+def setup_logging() -> logging.Logger:
+    """設定 logging"""
+    log_dir = Path(__file__).parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+    
+    log_file = log_dir / f"cli_{datetime.now().strftime('%Y%m%d')}.log"
+    
+    logger = logging.getLogger("bank_cli")
+    logger.setLevel(logging.DEBUG)
+    
+    # 避免重複加入 handler
+    if not logger.handlers:
+        # 檔案 handler（記錄所有層級）
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setLevel(logging.DEBUG)
+        file_formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+    
+    return logger
+
+# 初始化 logger
+logger = setup_logging()
 
 
 # ============================================================
@@ -203,6 +237,7 @@ def download_single_bank(year: int, quarter: int) -> bool:
             bank_name = BANK_CODES[bank_code]
         else:
             print_error(f"找不到銀行代碼: {bank_code}")
+            logger.warning(f"找不到銀行代碼: {bank_code}")
             return False
     except ValueError:
         # 以名稱查詢（模糊比對）
@@ -214,79 +249,128 @@ def download_single_bank(year: int, quarter: int) -> bool:
         
         if not bank_name:
             print_error(f"找不到銀行: {bank_input}")
+            logger.warning(f"找不到銀行: {bank_input}")
             return False
     
     print_info(f"正在下載 {bank_name} {year}Q{quarter} 財報...")
+    logger.info(f"開始下載: {bank_name} {year}Q{quarter}")
     
-    downloader = BankDownloader(data_dir=str(get_data_dir()))
-    result = asyncio.run(downloader.download(bank_name, year, quarter))
-    
-    if result.status == DownloadStatus.SUCCESS:
-        print_success(f"下載成功: {result.file_path}")
-        return True
-    elif result.status == DownloadStatus.ALREADY_EXISTS:
-        print_warning(f"檔案已存在: {result.file_path}")
-        return True
-    else:
-        print_error(f"下載失敗: {result.message}")
+    try:
+        downloader = BankDownloader(data_dir=str(get_data_dir()))
+        result = asyncio.run(downloader.download(bank_name, year, quarter))
+        
+        if result.status == DownloadStatus.SUCCESS:
+            print_success(f"下載成功: {result.file_path}")
+            logger.info(f"下載成功: {bank_name} -> {result.file_path}")
+            return True
+        elif result.status == DownloadStatus.ALREADY_EXISTS:
+            print_warning(f"檔案已存在: {result.file_path}")
+            logger.info(f"檔案已存在: {bank_name}")
+            return True
+        else:
+            print_error(f"下載失敗: {result.message}")
+            logger.error(f"下載失敗: {bank_name} - {result.message}")
+            return False
+    except Exception as e:
+        print_error(f"下載錯誤: {str(e)}")
+        logger.exception(f"下載異常: {bank_name}")
         return False
 
 
-async def _download_all_banks_async(downloader: BankDownloader, year: int, quarter: int) -> Tuple[int, int, list]:
-    """非同步下載所有銀行（內部函數）"""
+async def _download_all_banks_async(
+    downloader: BankDownloader, 
+    year: int, 
+    quarter: int,
+    max_concurrent: int = 5
+) -> Tuple[int, int, list]:
+    """
+    非同步並行下載所有銀行（內部函數）
+    
+    Args:
+        downloader: BankDownloader 實例
+        year: 民國年
+        quarter: 季度
+        max_concurrent: 最大並行數量
+    """
     success_count = 0
     fail_count = 0
     failed_banks = []
+    results_lock = asyncio.Lock()
     
     total = len(BANK_DOWNLOADERS)
+    completed = 0
     
-    for idx, bank_name in enumerate(BANK_DOWNLOADERS.keys(), 1):
-        print(f"[{idx:02d}/{total}] {bank_name}... ", end="", flush=True)
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def download_one(bank_name: str):
+        nonlocal success_count, fail_count, completed
         
-        result = await downloader.download(bank_name, year, quarter)
-        
-        if result.status == DownloadStatus.SUCCESS:
-            print(f"{Color.GREEN}成功{Color.RESET}")
-            success_count += 1
-        elif result.status == DownloadStatus.ALREADY_EXISTS:
-            print(f"{Color.YELLOW}已存在{Color.RESET}")
-            success_count += 1
-        else:
-            print(f"{Color.RED}失敗{Color.RESET} - {result.message}")
-            fail_count += 1
-            failed_banks.append(bank_name)
+        async with semaphore:
+            try:
+                result = await downloader.download(bank_name, year, quarter)
+                
+                async with results_lock:
+                    completed += 1
+                    if result.status == DownloadStatus.SUCCESS:
+                        print(f"[{completed:02d}/{total}] {bank_name}... {Color.GREEN}成功{Color.RESET}")
+                        logger.info(f"下載成功: {bank_name}")
+                        success_count += 1
+                    elif result.status == DownloadStatus.ALREADY_EXISTS:
+                        print(f"[{completed:02d}/{total}] {bank_name}... {Color.YELLOW}已存在{Color.RESET}")
+                        logger.info(f"檔案已存在: {bank_name}")
+                        success_count += 1
+                    else:
+                        print(f"[{completed:02d}/{total}] {bank_name}... {Color.RED}失敗{Color.RESET} - {result.message}")
+                        logger.error(f"下載失敗: {bank_name} - {result.message}")
+                        fail_count += 1
+                        failed_banks.append(bank_name)
+            except Exception as e:
+                async with results_lock:
+                    completed += 1
+                    print(f"[{completed:02d}/{total}] {bank_name}... {Color.RED}錯誤{Color.RESET} - {str(e)}")
+                    logger.exception(f"下載異常: {bank_name}")
+                    fail_count += 1
+                    failed_banks.append(bank_name)
+    
+    # 建立所有下載任務並並行執行
+    tasks = [download_one(bank_name) for bank_name in BANK_DOWNLOADERS.keys()]
+    await asyncio.gather(*tasks)
     
     return success_count, fail_count, failed_banks
 
 
-def download_all_banks(year: int, quarter: int) -> Tuple[int, int]:
+def download_all_banks(year: int, quarter: int, max_concurrent: int = 5) -> Tuple[int, int]:
     """
-    下載所有銀行財報
+    下載所有銀行財報（多工並行）
     
     Args:
         year: 民國年
         quarter: 季度
+        max_concurrent: 最大並行數量（預設 5）
         
     Returns:
         (成功數, 失敗數)
     """
-    print_info(f"開始下載所有銀行 {year}Q{quarter} 財報...")
+    print_info(f"開始下載所有銀行 {year}Q{quarter} 財報（並行數: {max_concurrent}）...")
+    logger.info(f"開始批次下載: {year}Q{quarter}, 並行數: {max_concurrent}")
     print("-" * 50)
     
     downloader = BankDownloader(data_dir=str(get_data_dir()))
     
-    # 使用非同步函數執行下載
+    # 使用非同步函數執行並行下載
     success_count, fail_count, failed_banks = asyncio.run(
-        _download_all_banks_async(downloader, year, quarter)
+        _download_all_banks_async(downloader, year, quarter, max_concurrent)
     )
     
     print("-" * 50)
     print_info(f"下載完成！成功: {success_count}, 失敗: {fail_count}")
+    logger.info(f"批次下載完成: 成功 {success_count}, 失敗 {fail_count}")
     
     if failed_banks:
         print_warning("以下銀行下載失敗：")
         for bank in failed_banks:
             print(f"  - {bank}")
+        logger.warning(f"下載失敗的銀行: {failed_banks}")
     
     return success_count, fail_count
 
@@ -299,6 +383,7 @@ def handle_download():
     
     if year is None:
         print_error("無效的季度格式，請使用如 114Q1 的格式")
+        logger.warning(f"無效的季度格式: {year_quarter}")
         return
     
     show_download_menu()
@@ -307,7 +392,14 @@ def handle_download():
     if choice == "1":
         download_single_bank(year, quarter)
     elif choice == "ALL":
-        download_all_banks(year, quarter)
+        # 詢問並行數量
+        parallel_input = get_input("請輸入並行下載數量 (預設 5，最大 10)：")
+        try:
+            max_concurrent = int(parallel_input) if parallel_input else 5
+            max_concurrent = min(max(1, max_concurrent), 10)  # 限制 1-10
+        except ValueError:
+            max_concurrent = 5
+        download_all_banks(year, quarter, max_concurrent)
     elif choice == "0":
         return
     else:
