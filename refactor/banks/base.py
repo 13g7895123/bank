@@ -1,12 +1,12 @@
 """
-銀行財報下載基礎類別
+銀行財報下載基礎類別（非同步版本）
 """
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-from playwright.sync_api import sync_playwright, Page, Browser
+from playwright.async_api import async_playwright, Page, Browser
 
 
 class DownloadStatus(Enum):
@@ -26,7 +26,7 @@ class DownloadResult:
 
 
 class BaseBankDownloader(ABC):
-    """銀行下載器基礎類別"""
+    """銀行下載器基礎類別（非同步版本）"""
     
     # 子類別需要覆寫這些屬性
     bank_name: str = ""
@@ -83,9 +83,9 @@ class BaseBankDownloader(ABC):
         else:
             return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     
-    def download(self, year: int, quarter: int) -> DownloadResult:
+    async def download(self, year: int, quarter: int) -> DownloadResult:
         """
-        下載財報
+        下載財報（非同步）
         
         Args:
             year: 民國年
@@ -103,7 +103,7 @@ class BaseBankDownloader(ABC):
             )
         
         # 第一次嘗試：使用預設的 headless 設定
-        result = self._try_download(year, quarter, headless=self.headless)
+        result = await self._try_download(year, quarter, headless=self.headless)
         
         # 驗證下載結果
         if self._is_download_successful(result, year, quarter):
@@ -115,7 +115,7 @@ class BaseBankDownloader(ABC):
             self._cleanup_failed_download(year, quarter)
             
             # 第二次嘗試：使用有頭模式
-            result = self._try_download(year, quarter, headless=False)
+            result = await self._try_download(year, quarter, headless=False)
             
             # 再次驗證
             if self._is_download_successful(result, year, quarter):
@@ -124,23 +124,23 @@ class BaseBankDownloader(ABC):
         
         return result
     
-    def _try_download(self, year: int, quarter: int, headless: bool) -> DownloadResult:
-        """嘗試下載（內部方法）"""
+    async def _try_download(self, year: int, quarter: int, headless: bool) -> DownloadResult:
+        """嘗試下載（內部方法，非同步）"""
         try:
-            with sync_playwright() as p:
+            async with async_playwright() as p:
                 browser_launcher = self._get_browser(p)
-                browser = browser_launcher.launch(headless=headless)
-                context = browser.new_context(
+                browser = await browser_launcher.launch(headless=headless)
+                context = await browser.new_context(
                     user_agent=self._get_user_agent(),
                     viewport={"width": 1920, "height": 1080}
                 )
-                page = context.new_page()
+                page = await context.new_page()
                 page.set_default_timeout(60000)  # 60 秒超時
                 page.set_default_navigation_timeout(60000)
                 
-                result = self._download(page, year, quarter)
+                result = await self._download(page, year, quarter)
                 
-                browser.close()
+                await browser.close()
                 return result
                 
         except Exception as e:
@@ -186,9 +186,9 @@ class BaseBankDownloader(ABC):
                 pass
     
     @abstractmethod
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         """
-        實際下載邏輯，子類別需實作
+        實際下載邏輯，子類別需實作（非同步）
         
         Args:
             page: Playwright Page 物件
@@ -200,15 +200,15 @@ class BaseBankDownloader(ABC):
         """
         pass
     
-    def download_pdf_from_url(self, page: Page, url: str, year: int, quarter: int) -> DownloadResult:
-        """從 URL 下載 PDF"""
+    async def download_pdf_from_url(self, page: Page, url: str, year: int, quarter: int) -> DownloadResult:
+        """從 URL 下載 PDF（非同步）"""
         try:
-            response = page.request.get(url)
+            response = await page.request.get(url)
             
             if response.status == 200:
                 content_type = response.headers.get('content-type', '')
                 if 'pdf' in content_type.lower() or url.endswith('.pdf'):
-                    file_path = self.save_pdf(response.body(), year, quarter)
+                    file_path = self.save_pdf(await response.body(), year, quarter)
                     return DownloadResult(
                         status=DownloadStatus.SUCCESS,
                         message="下載成功",
@@ -230,21 +230,21 @@ class BaseBankDownloader(ABC):
                 message=f"下載失敗: {str(e)}"
             )
     
-    def download_pdf_by_click(self, page: Page, locator, year: int, quarter: int) -> DownloadResult:
-        """透過點擊連結下載 PDF（適用於需要 JavaScript 處理的下載連結）"""
+    async def download_pdf_by_click(self, page: Page, locator, year: int, quarter: int) -> DownloadResult:
+        """透過點擊連結下載 PDF（非同步，適用於需要 JavaScript 處理的下載連結）"""
         try:
             # 確保目錄存在
             self.ensure_dir(year, quarter)
             file_path = self.get_file_path(year, quarter)
             
             # 啟動下載監聽
-            with page.expect_download(timeout=30000) as download_info:
-                locator.click()
+            async with page.expect_download(timeout=30000) as download_info:
+                await locator.click()
             
-            download = download_info.value
+            download = await download_info.value
             
             # 儲存檔案
-            download.save_as(file_path)
+            await download.save_as(file_path)
             
             return DownloadResult(
                 status=DownloadStatus.SUCCESS,

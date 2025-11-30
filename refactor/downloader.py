@@ -1,11 +1,12 @@
 """
-銀行財報下載器主模組
-使用 Playwright 進行網頁自動化
+銀行財報下載器主模組（非同步版本）
+使用 Playwright 進行網頁自動化，支援並行下載
 """
 import os
 import sys
+import asyncio
 from pathlib import Path
-from typing import Dict, Type, Optional
+from typing import Dict, Type, Optional, List
 from dataclasses import dataclass
 
 # 確保可以導入 banks 子模組
@@ -142,7 +143,7 @@ BANK_CODES: Dict[int, str] = {
 
 
 class BankDownloader:
-    """銀行財報下載器"""
+    """銀行財報下載器（非同步版本）"""
     
     def __init__(self, data_dir: str = "data"):
         """
@@ -169,9 +170,9 @@ class BankDownloader:
             return downloader_class(data_dir=self.data_dir)
         return None
     
-    def download(self, bank_name: str, year: int, quarter: int) -> DownloadResult:
+    async def download(self, bank_name: str, year: int, quarter: int) -> DownloadResult:
         """
-        下載指定銀行的財報
+        下載指定銀行的財報（非同步）
         
         Args:
             bank_name: 銀行名稱
@@ -188,11 +189,11 @@ class BankDownloader:
                 message=f"不支援的銀行: {bank_name}"
             )
         
-        return downloader.download(year, quarter)
+        return await downloader.download(year, quarter)
     
-    def download_by_code(self, bank_code: int, year: int, quarter: int) -> DownloadResult:
+    async def download_by_code(self, bank_code: int, year: int, quarter: int) -> DownloadResult:
         """
-        依銀行代碼下載財報
+        依銀行代碼下載財報（非同步）
         
         Args:
             bank_code: 銀行代碼
@@ -209,24 +210,93 @@ class BankDownloader:
                 message=f"不支援的銀行代碼: {bank_code}"
             )
         
-        return self.download(bank_name, year, quarter)
+        return await self.download(bank_name, year, quarter)
     
-    def download_all(self, year: int, quarter: int) -> Dict[str, DownloadResult]:
+    async def download_all(self, year: int, quarter: int, max_concurrent: int = 5) -> Dict[str, DownloadResult]:
         """
-        下載所有銀行的財報
+        下載所有銀行的財報（非同步並行）
         
         Args:
             year: 民國年
             quarter: 季度 (1-4)
+            max_concurrent: 最大並行數量（預設 5）
             
         Returns:
             Dict: 各銀行的下載結果
         """
+        bank_names = list(BANK_DOWNLOADERS.keys())
+        return await self.download_banks(bank_names, year, quarter, max_concurrent)
+    
+    async def download_banks(
+        self, 
+        bank_names: List[str], 
+        year: int, 
+        quarter: int, 
+        max_concurrent: int = 5
+    ) -> Dict[str, DownloadResult]:
+        """
+        下載指定銀行的財報（非同步並行）
+        
+        Args:
+            bank_names: 銀行名稱列表
+            year: 民國年
+            quarter: 季度 (1-4)
+            max_concurrent: 最大並行數量
+            
+        Returns:
+            Dict: 各銀行的下載結果
+        """
+        semaphore = asyncio.Semaphore(max_concurrent)
         results = {}
-        for bank_name in BANK_DOWNLOADERS.keys():
-            print(f"下載 {bank_name}...")
-            results[bank_name] = self.download(bank_name, year, quarter)
+        
+        async def download_with_semaphore(bank_name: str):
+            async with semaphore:
+                print(f"[下載中] {bank_name}...")
+                result = await self.download(bank_name, year, quarter)
+                status_icon = "✓" if result.status == DownloadStatus.SUCCESS else "✗"
+                print(f"[{status_icon}] {bank_name}: {result.message}")
+                return bank_name, result
+        
+        tasks = [download_with_semaphore(name) for name in bank_names]
+        completed = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for item in completed:
+            if isinstance(item, Exception):
+                print(f"[錯誤] 下載異常: {item}")
+            else:
+                bank_name, result = item
+                results[bank_name] = result
+        
         return results
+    
+    async def download_by_codes(
+        self, 
+        bank_codes: List[int], 
+        year: int, 
+        quarter: int,
+        max_concurrent: int = 5
+    ) -> Dict[str, DownloadResult]:
+        """
+        依銀行代碼列表下載財報（非同步並行）
+        
+        Args:
+            bank_codes: 銀行代碼列表
+            year: 民國年
+            quarter: 季度 (1-4)
+            max_concurrent: 最大並行數量
+            
+        Returns:
+            Dict: 各銀行的下載結果
+        """
+        bank_names = []
+        for code in bank_codes:
+            name = BANK_CODES.get(code)
+            if name:
+                bank_names.append(name)
+            else:
+                print(f"[警告] 不支援的銀行代碼: {code}")
+        
+        return await self.download_banks(bank_names, year, quarter, max_concurrent)
     
     @staticmethod
     def list_supported_banks() -> list:

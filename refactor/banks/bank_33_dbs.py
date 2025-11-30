@@ -10,7 +10,7 @@ URL 格式說明：
 - 更早年份: 檔名格式不統一，需從網頁動態抓取
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 from urllib.parse import quote
 
 
@@ -45,53 +45,53 @@ class DBSBankDownloader(BaseBankDownloader):
             # 更早年份格式不統一，返回 None 讓後續從網頁抓取
             return None
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         year_ad = year + 1911  # 民國轉西元
         
         # 先嘗試直接構建 URL 下載
         pdf_url = self._build_pdf_url(year_ad, quarter)
         if pdf_url:
-            response = page.request.head(pdf_url)
+            response = await page.request.head(pdf_url)
             if response.ok:
-                return self.download_pdf_from_url(page, pdf_url, year, quarter)
+                return await self.download_pdf_from_url(page, pdf_url, year, quarter)
         
         # 如果直接 URL 失敗，使用網頁動態抓取
-        return self._download_from_webpage(page, year, quarter, year_ad)
+        return await self._download_from_webpage(page, year, quarter, year_ad)
     
-    def _download_from_webpage(self, page: Page, year: int, quarter: int, 
+    async def _download_from_webpage(self, page: Page, year: int, quarter: int, 
                                 year_ad: int) -> DownloadResult:
         """從網頁動態抓取財務報告連結"""
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(3000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(3000)
         
         # 點擊財務資訊揭露展開
         fin_link = page.locator("text=財務資訊揭露").first
-        if fin_link.count() > 0:
-            fin_link.click()
-            page.wait_for_timeout(1000)
+        if await fin_link.count() > 0:
+            await fin_link.click()
+            await page.wait_for_timeout(1000)
         
         # 點擊重要財務業務資訊展開
         important_fin = page.locator("text=重要財務業務資訊").first
-        if important_fin.count() > 0:
-            important_fin.click()
-            page.wait_for_timeout(1500)
+        if await important_fin.count() > 0:
+            await important_fin.click()
+            await page.wait_for_timeout(1500)
         
         # 搜尋目標連結 - 格式為 "2025年3季" 或 "2025年1季"
         search_text = f"{year_ad}年{quarter}季"
         
         # 查找所有 PDF 連結
-        links = page.query_selector_all("a[href*='.pdf']")
+        links = await page.query_selector_all("a[href*='.pdf']")
         pdf_url = None
         
         for link in links:
             try:
-                text = link.inner_text().strip()
-                href = link.get_attribute("href") or ""
+                text = (await link.inner_text()).strip()
+                href = await link.get_attribute("href") or ""
                 
                 # 確認是目標年份和季度的 SUB (子公司) 報告
                 if text == search_text and "SUB" in href.upper():
@@ -106,4 +106,4 @@ class DBSBankDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} 的重要財務業務資訊"
             )
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

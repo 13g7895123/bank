@@ -7,7 +7,7 @@
 - 有多個下載區塊，需搜尋特定季度
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class CathayDownloader(BaseBankDownloader):
@@ -19,13 +19,13 @@ class CathayDownloader(BaseBankDownloader):
     headless = False  # 強制使用有頭模式
     retry_with_head = False
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面（增加超時時間）
-        page.goto(self.bank_url, timeout=120000)
-        page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(5000)
+        await page.goto(self.bank_url, timeout=120000)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(5000)
         
         # 搜尋關鍵字
         # 格式可能是: "114年度 第一季財務報告" 或 "114年第1季"
@@ -38,7 +38,7 @@ class CathayDownloader(BaseBankDownloader):
         
         # 找所有下載區塊
         download_divs = page.locator("div.cubre-m-download")
-        count = download_divs.count()
+        count = await download_divs.count()
         
         if count == 0:
             return DownloadResult(
@@ -50,7 +50,7 @@ class CathayDownloader(BaseBankDownloader):
         target_div = None
         for i in range(count):
             div = download_divs.nth(i)
-            div_text = div.inner_text()
+            div_text = await div.inner_text()
             
             for pattern in search_patterns:
                 if pattern in div_text:
@@ -67,16 +67,16 @@ class CathayDownloader(BaseBankDownloader):
         
         # 找下載連結
         link = target_div.locator("a[href*='.pdf'], a[href*='download']").first
-        if link.count() == 0:
+        if await link.count() == 0:
             link = target_div.locator("div.cubre-o-action__item a").first
         
-        if link.count() == 0:
+        if await link.count() == 0:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message="找不到下載連結"
             )
         
-        href = link.get_attribute("href")
+        href = await link.get_attribute("href")
         if not href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,
@@ -88,4 +88,4 @@ class CathayDownloader(BaseBankDownloader):
         else:
             pdf_url = href
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

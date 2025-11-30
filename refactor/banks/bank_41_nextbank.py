@@ -8,7 +8,7 @@
 - 連結 href 沒有年份，需要根據區塊位置判斷
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class NextBankDownloader(BaseBankDownloader):
@@ -20,13 +20,13 @@ class NextBankDownloader(BaseBankDownloader):
     headless = False  # 強制使用有頭模式
     retry_with_head = False
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url, timeout=120000)
-        page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(8000)
+        await page.goto(self.bank_url, timeout=120000)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(8000)
         
         # 搜尋目標季度: "113年度第四季" 或 "114年度第一季"
         search_text = f"{year}年度{quarter_text}"
@@ -35,8 +35,8 @@ class NextBankDownloader(BaseBankDownloader):
         b_tags = page.locator("b")
         target_index = -1
         
-        for i in range(b_tags.count()):
-            text = b_tags.nth(i).inner_text().strip()
+        for i in range(await b_tags.count()):
+            text = await b_tags.nth(i).inner_text().strip()
             if search_text in text:
                 target_index = i
                 break
@@ -58,7 +58,7 @@ class NextBankDownloader(BaseBankDownloader):
             )
         
         target_link = asset_quality_links.nth(target_index)
-        href = target_link.get_attribute("href")
+        href = await target_link.get_attribute("href")
         
         if not href:
             return DownloadResult(
@@ -68,4 +68,4 @@ class NextBankDownloader(BaseBankDownloader):
         
         pdf_url = href if href.startswith("http") else f"https://www.nextbank.com.tw{href}"
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

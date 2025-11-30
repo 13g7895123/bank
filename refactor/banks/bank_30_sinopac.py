@@ -3,7 +3,7 @@
 網址: https://bank.sinopac.com/sinopacBT/about/investor/financial-statement.html
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class SinoPacDownloader(BaseBankDownloader):
@@ -13,38 +13,38 @@ class SinoPacDownloader(BaseBankDownloader):
     bank_code = 30
     bank_url = "https://bank.sinopac.com/sinopacBT/about/investor/financial-statement.html"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         year_ad = year + 1911  # 民國轉西元
         
         # 前往財報頁面
-        page.goto(self.bank_url, timeout=60000)
-        page.wait_for_timeout(5000)
+        await page.goto(self.bank_url, timeout=60000)
+        await page.wait_for_timeout(5000)
         
         # 點擊自定義選擇器打開下拉選單
-        styled_div = page.query_selector("div.select-styled")
+        styled_div = await page.query_selector("div.select-styled")
         if not styled_div:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message="找不到年度選擇器"
             )
         
-        styled_div.click()
-        page.wait_for_timeout(1000)
+        await styled_div.click()
+        await page.wait_for_timeout(1000)
         
         # 選擇目標年份
-        year_option = page.query_selector(f'li[rel="{year_ad}"]')
+        year_option = await page.query_selector(f'li[rel="{year_ad}"]')
         if not year_option:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message=f"找不到 {year_ad} 年的選項"
             )
         
-        year_option.click()
-        page.wait_for_timeout(3000)
+        await year_option.click()
+        await page.wait_for_timeout(3000)
         
         # 找列表中的項目
-        sheet_list = page.query_selector("ul.sheet-list")
+        sheet_list = await page.query_selector("ul.sheet-list")
         if not sheet_list:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
@@ -62,7 +62,7 @@ class SinoPacDownloader(BaseBankDownloader):
             if not link:
                 continue
             
-            text = link.inner_text()
+            text = await link.inner_text()
             
             # 檢查是否符合目標季度
             if str(year_ad) in text and quarter_text in text:
@@ -83,20 +83,20 @@ class SinoPacDownloader(BaseBankDownloader):
             )
         
         # 取得 PDF 連結
-        pdf_href = target_link.get_attribute("href")
+        pdf_href = await target_link.get_attribute("href")
         pdf_url = pdf_href if pdf_href.startswith("http") else f"https://bank.sinopac.com{pdf_href}"
         
         # 點擊連結打開新分頁
-        with page.context.expect_page() as new_page_info:
-            target_link.evaluate("el => el.click()")
+        async with page.context.expect_page() as new_page_info:
+            await target_link.evaluate("el => el.click()")
         
-        new_page = new_page_info.value
-        new_page.wait_for_timeout(3000)
+        new_page = await new_page_info.value
+        await new_page.wait_for_timeout(3000)
         
         # 從新分頁下載 PDF
-        result = self.download_pdf_from_url(new_page, pdf_url, year, quarter)
+        result = await self.download_pdf_from_url(new_page, pdf_url, year, quarter)
         
         # 關閉新分頁
-        new_page.close()
+        await new_page.close()
         
         return result

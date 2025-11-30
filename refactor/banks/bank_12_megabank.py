@@ -5,7 +5,7 @@
 import subprocess
 import os
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class MegaBankDownloader(BaseBankDownloader):
@@ -16,13 +16,13 @@ class MegaBankDownloader(BaseBankDownloader):
     bank_url = "https://www.megabank.com.tw/about/announcement/news/regulatory-disclosures/finance-report"
     headless = True  # 預設無頭模式，失敗時自動重試有頭模式
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 步驟1: 找到季度連結並點擊
         # 格式: "前往114年度第一季重要財務業務資訊"
@@ -41,7 +41,7 @@ class MegaBankDownloader(BaseBankDownloader):
         link = None
         for keyword in search_keywords:
             locator = page.locator(f'a[title="{keyword}"]')
-            if locator.count() > 0:
+            if await locator.count() > 0:
                 link = locator.first
                 break
         
@@ -52,24 +52,24 @@ class MegaBankDownloader(BaseBankDownloader):
             )
         
         # 點擊進入子頁面
-        link.click()
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await link.click()
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 步驟2: 找「資產品質」的連結並點擊
         # 格式: title="下載pdf檔案 資產品質 另開新視窗"
         asset_link = page.locator('a[title="下載pdf檔案 資產品質 另開新視窗"]')
         
-        if asset_link.count() == 0:
+        if await asset_link.count() == 0:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message="找不到資產品質連結"
             )
         
         # 點擊進入 PDF 頁面
-        asset_link.first.click()
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await asset_link.first.click()
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 步驟3: 取得 PDF URL（當前頁面應該就是 PDF 或有 PDF 連結）
         current_url = page.url
@@ -80,18 +80,18 @@ class MegaBankDownloader(BaseBankDownloader):
         else:
             # 找頁面中的 PDF 連結
             pdf_link = page.locator('a[href*=".pdf"]').first
-            if pdf_link.count() == 0:
+            if await pdf_link.count() == 0:
                 # 嘗試找 embed 或 iframe 中的 PDF
                 embed = page.locator('embed[src*=".pdf"], iframe[src*=".pdf"]').first
-                if embed.count() > 0:
-                    pdf_url = embed.get_attribute("src")
+                if await embed.count() > 0:
+                    pdf_url = await embed.get_attribute("src")
                 else:
                     return DownloadResult(
                         status=DownloadStatus.NO_DATA,
                         message="找不到 PDF 連結"
                     )
             else:
-                pdf_url = pdf_link.get_attribute("href")
+                pdf_url = await pdf_link.get_attribute("href")
         
         if not pdf_url:
             return DownloadResult(
@@ -123,7 +123,7 @@ class MegaBankDownloader(BaseBankDownloader):
                 )
             else:
                 # 嘗試用 Playwright 下載
-                return self.download_pdf_from_url(page, pdf_url, year, quarter)
+                return await self.download_pdf_from_url(page, pdf_url, year, quarter)
         except Exception as e:
             # 嘗試用 Playwright 下載
-            return self.download_pdf_from_url(page, pdf_url, year, quarter)
+            return await self.download_pdf_from_url(page, pdf_url, year, quarter)

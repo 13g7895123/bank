@@ -7,7 +7,7 @@
 - href 包含 113Q4.pdf 這樣的格式
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class HwataiBankDownloader(BaseBankDownloader):
@@ -17,13 +17,13 @@ class HwataiBankDownloader(BaseBankDownloader):
     bank_code = 22
     bank_url = "https://www.hwataibank.com.tw/public/public02-01/"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(3000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(3000)
         
         # 搜尋 href 包含 113Q4.pdf 這樣格式的連結
         search_pattern = f"{year}Q{quarter}.pdf"
@@ -31,8 +31,8 @@ class HwataiBankDownloader(BaseBankDownloader):
         links = page.locator("a")
         target_link = None
         
-        for i in range(links.count()):
-            href = links.nth(i).get_attribute("href") or ""
+        for i in range(await links.count()):
+            href = await links.nth(i).get_attribute("href") or ""
             if search_pattern in href:
                 target_link = links.nth(i)
                 break
@@ -43,6 +43,6 @@ class HwataiBankDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} 的資料"
             )
         
-        pdf_url = target_link.get_attribute("href")
+        pdf_url = await target_link.get_attribute("href")
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

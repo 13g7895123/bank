@@ -8,7 +8,7 @@
 - 連結格式: "2025 Q1 財務業務資訊"
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class OBankDownloader(BaseBankDownloader):
@@ -18,16 +18,16 @@ class OBankDownloader(BaseBankDownloader):
     bank_code = 15
     bank_url = "https://www.o-bank.com/common/regulation/regulation-financialreport"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 民國年轉西元年
         western_year = year + 1911
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(3000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(3000)
         
         # 搜尋目標連結
         # 格式: "2024 Q4 財務業務資訊" 或 "2025 Q1 財務業務資訊"
@@ -37,15 +37,15 @@ class OBankDownloader(BaseBankDownloader):
         all_lists = page.locator("ul.w3-ul.o-ul")
         target_link = None
         
-        for i in range(all_lists.count()):
+        for i in range(await all_lists.count()):
             ul = all_lists.nth(i)
             items = ul.locator("li")
             
-            for j in range(items.count()):
-                item_text = items.nth(j).inner_text()
+            for j in range(await items.count()):
+                item_text = await items.nth(j).inner_text()
                 if search_text in item_text:
                     link = items.nth(j).locator("a").first
-                    if link.count() > 0:
+                    if await link.count() > 0:
                         target_link = link
                         break
             if target_link:
@@ -57,7 +57,7 @@ class OBankDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} ({western_year} Q{quarter}) 的下載連結"
             )
         
-        href = target_link.get_attribute("href")
+        href = await target_link.get_attribute("href")
         if not href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,
@@ -66,4 +66,4 @@ class OBankDownloader(BaseBankDownloader):
         
         pdf_url = f"https://www.o-bank.com{href}" if not href.startswith("http") else href
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

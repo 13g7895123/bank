@@ -8,7 +8,7 @@
 - 連結格式: 113_Q4.pdf
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class BOPDownloader(BaseBankDownloader):
@@ -18,13 +18,13 @@ class BOPDownloader(BaseBankDownloader):
     bank_code = 25
     bank_url = "https://www.bop.com.tw/Footer/Financial_Report?tni=110&refid=null"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(3000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(3000)
         
         # 搜尋連結：格式為 113_Q4.pdf
         search_text = f"{year}_Q{quarter}.pdf"
@@ -32,8 +32,8 @@ class BOPDownloader(BaseBankDownloader):
         links = page.locator("a")
         target_link = None
         
-        for i in range(links.count()):
-            text = links.nth(i).inner_text().strip()
+        for i in range(await links.count()):
+            text = await links.nth(i).inner_text().strip()
             if search_text in text:
                 target_link = links.nth(i)
                 break
@@ -44,7 +44,7 @@ class BOPDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} 的資料"
             )
         
-        href = target_link.get_attribute("href")
+        href = await target_link.get_attribute("href")
         if not href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,
@@ -59,4 +59,4 @@ class BOPDownloader(BaseBankDownloader):
         else:
             pdf_url = href
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

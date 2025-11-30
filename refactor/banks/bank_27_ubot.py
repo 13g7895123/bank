@@ -3,7 +3,7 @@
 網址: https://www.ubot.com.tw/investors
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class UBOTDownloader(BaseBankDownloader):
@@ -13,16 +13,16 @@ class UBOTDownloader(BaseBankDownloader):
     bank_code = 27
     bank_url = "https://www.ubot.com.tw/investors"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(5000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(5000)
         
         # 找到 thead 中有 p 元素且 text 為「財務資訊」的表格（第一個 table）
-        table = page.query_selector("table")
+        table = await page.query_selector("table")
         if not table:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
@@ -43,7 +43,7 @@ class UBOTDownloader(BaseBankDownloader):
         for row in rows:
             first_td = row.query_selector("td")
             if first_td:
-                td_text = first_td.text_content().strip()
+                td_text = (await first_td.text_content()).strip()
                 if f"{year}年度" in td_text:
                     target_row = row
                     break
@@ -76,20 +76,20 @@ class UBOTDownloader(BaseBankDownloader):
             )
         
         # 取得 href 屬性，組成完整 URL
-        pdf_href = target_link.get_attribute("href")
+        pdf_href = await target_link.get_attribute("href")
         pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.ubot.com.tw{pdf_href}"
         
         # 監聯新分頁，用 JavaScript 點擊連結
-        with page.context.expect_page() as new_page_info:
-            target_link.evaluate("el => el.click()")
+        async with page.context.expect_page() as new_page_info:
+            await target_link.evaluate("el => el.click()")
         
-        new_page = new_page_info.value
-        new_page.wait_for_load_state("networkidle")
+        new_page = await new_page_info.value
+        await new_page.wait_for_load_state("networkidle")
         
         # 從新分頁下載 PDF
-        result = self.download_pdf_from_url(new_page, pdf_url, year, quarter)
+        result = await self.download_pdf_from_url(new_page, pdf_url, year, quarter)
         
         # 關閉新分頁
-        new_page.close()
+        await new_page.close()
         
         return result

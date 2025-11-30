@@ -9,7 +9,7 @@
   - Web-FinancialInformation-2025Q3.pdf
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 import re
 
 
@@ -22,19 +22,19 @@ class CitibankDownloader(BaseBankDownloader):
     headless = False  # 強制使用有頭模式
     retry_with_head = False
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 民國年轉西元年
         western_year = year + 1911
         
         # 前往財報頁面
-        page.goto(self.bank_url, timeout=120000)
-        page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(8000)
+        await page.goto(self.bank_url, timeout=120000)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(8000)
         
         # 取得頁面 HTML 並搜尋 PDF
-        html = page.content()
+        html = await page.content()
         
         # 搜尋 PDF 連結模式
         # 格式可能是:
@@ -66,4 +66,4 @@ class CitibankDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} ({western_year}Q{quarter}) 的資料"
             )
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

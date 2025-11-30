@@ -3,7 +3,7 @@
 網址: https://www.bok.com.tw/-107
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class BOKDownloader(BaseBankDownloader):
@@ -14,13 +14,13 @@ class BOKDownloader(BaseBankDownloader):
     bank_url = "https://www.bok.com.tw/-107"
     headless = True  # 預設無頭模式，失敗時自動重試有頭模式
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 建立搜尋的 title 關鍵字
         # Q1-Q3 格式: "114年度第二季季報.pdf（另開視窗）"
@@ -44,7 +44,7 @@ class BOKDownloader(BaseBankDownloader):
         link = None
         for keyword in search_keywords:
             locator = page.locator(f'a[title="{keyword}"]')
-            if locator.count() > 0:
+            if await locator.count() > 0:
                 link = locator.first
                 break
         
@@ -55,7 +55,7 @@ class BOKDownloader(BaseBankDownloader):
             )
         
         # 取得 href
-        href = link.get_attribute("href")
+        href = await link.get_attribute("href")
         if not href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,
@@ -68,4 +68,4 @@ class BOKDownloader(BaseBankDownloader):
         else:
             pdf_url = href
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

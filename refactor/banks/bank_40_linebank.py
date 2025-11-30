@@ -3,7 +3,7 @@
 網址: https://corp.linebank.com.tw/zh-tw/company-financial
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class LineBankDownloader(BaseBankDownloader):
@@ -13,16 +13,16 @@ class LineBankDownloader(BaseBankDownloader):
     bank_code = 40
     bank_url = "https://corp.linebank.com.tw/zh-tw/company-financial"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(3000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(3000)
         
         # 找 tabs 內容
-        tab_contents = page.query_selector_all("div.el-tabs__content")
+        tab_contents = await page.query_selector_all("div.el-tabs__content")
         if len(tab_contents) < 2:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
@@ -36,9 +36,9 @@ class LineBankDownloader(BaseBankDownloader):
         for attachment in attachments:
             link = attachment.query_selector("a")
             if link:
-                title = link.get_attribute("title") or link.inner_text()
+                title = await link.get_attribute("title") or link.inner_text()
                 if str(year) in title and quarter_text in title:
-                    pdf_href = link.get_attribute("href")
+                    pdf_href = await link.get_attribute("href")
                     pdf_url = pdf_href if pdf_href.startswith("http") else f"https://corp.linebank.com.tw{pdf_href}"
                     break
         
@@ -48,4 +48,4 @@ class LineBankDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} 的資料"
             )
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

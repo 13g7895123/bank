@@ -8,7 +8,7 @@
 - 點擊後進入詳細頁面，再找 PDF 連結
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class CHBDownloader(BaseBankDownloader):
@@ -18,13 +18,13 @@ class CHBDownloader(BaseBankDownloader):
     bank_code = 6
     bank_url = "https://www.bankchb.com/frontend/finance.jsp"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 建立搜尋關鍵字
         # Q4 對應「年度」，其他季度對應「第X季」
@@ -44,8 +44,8 @@ class CHBDownloader(BaseBankDownloader):
         links = page.locator('ul.ul-itemss a')
         target_link = None
         
-        for i in range(links.count()):
-            link_text = links.nth(i).inner_text().strip()
+        for i in range(await links.count()):
+            link_text = (await links.nth(i).inner_text()).strip()
             for pattern in search_patterns:
                 if pattern in link_text:
                     target_link = links.nth(i)
@@ -60,24 +60,24 @@ class CHBDownloader(BaseBankDownloader):
             )
         
         # 點擊連結進入子頁面
-        href = target_link.get_attribute("href")
-        page.goto(f"https://www.bankchb.com/frontend/{href}")
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(1500)
+        href = await target_link.get_attribute("href")
+        await page.goto(f"https://www.bankchb.com/frontend/{href}")
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(1500)
         
         # 找 PDF 連結（法定財務業務資訊）
         pdf_link = page.locator('a.editor_link:has-text("法定財務業務資訊")')
-        if pdf_link.count() == 0:
+        if await pdf_link.count() == 0:
             # 嘗試找任何 PDF 連結
             pdf_link = page.locator('a.editor_link')
         
-        if pdf_link.count() == 0:
+        if await pdf_link.count() == 0:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message="找不到 PDF 連結"
             )
         
-        pdf_href = pdf_link.first.get_attribute("href")
+        pdf_href = await pdf_link.first.get_attribute("href")
         if not pdf_href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,
@@ -89,4 +89,4 @@ class CHBDownloader(BaseBankDownloader):
         else:
             pdf_url = pdf_href
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

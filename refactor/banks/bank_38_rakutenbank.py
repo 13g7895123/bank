@@ -11,7 +11,7 @@
    但實際可下載的 URL 是 www.rakuten-bank.com.tw/cms-upload/file/xxx.pdf
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page, BrowserContext
+from playwright.async_api import Page, BrowserContext
 import json
 import re
 
@@ -40,30 +40,30 @@ class RakutenBankDownloader(BaseBankDownloader):
             )
         return api_url
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 搜尋文字格式: "114年第三季重要財務業務資訊"
         search_title = f"{year}年{quarter_text}重要財務業務資訊"
         
         # 先嘗試透過 GraphQL API 獲取 PDF URL
-        pdf_url = self._get_pdf_url_from_api(page, year, quarter_text)
+        pdf_url = await self._get_pdf_url_from_api(page, year, quarter_text)
         
         if pdf_url:
             # 轉換 URL 為實際可下載格式
             download_url = self._convert_pdf_url(pdf_url)
-            return self._download_pdf(page, download_url, year, quarter)
+            return await self._download_pdf(page, download_url, year, quarter)
         
         # 如果 API 失敗，使用網頁動態抓取
-        return self._download_from_webpage(page, year, quarter, search_title)
+        return await self._download_from_webpage(page, year, quarter, search_title)
     
-    def _get_pdf_url_from_api(self, page: Page, year: int, quarter_text: str) -> str:
+    async def _get_pdf_url_from_api(self, page: Page, year: int, quarter_text: str) -> str:
         """透過 GraphQL API 獲取 PDF URL"""
         
         # 先訪問頁面取得必要的 cookie
-        page.goto(self.bank_url, timeout=60000)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url, timeout=60000)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         graphql_url = "https://www.rakuten-bank.com.tw/graphql"
         query = """query ddisclosurecat($categoryId: JSON) {
@@ -85,7 +85,7 @@ class RakutenBankDownloader(BaseBankDownloader):
         variables = {"categoryId": {"categoryId": "finance"}}
         
         try:
-            response = page.request.post(
+            response = await page.request.post(
                 graphql_url,
                 data={
                     "operationName": "ddisclosurecat",
@@ -97,7 +97,7 @@ class RakutenBankDownloader(BaseBankDownloader):
             if not response.ok:
                 return None
             
-            data = response.json()
+            data = await response.json()
             disclosures = data.get("data", {}).get("ddisclosurecats", [{}])[0].get("ddisclosures", [])
             
             # 搜尋目標季度的報告
@@ -116,21 +116,21 @@ class RakutenBankDownloader(BaseBankDownloader):
         except Exception as e:
             return None
     
-    def _download_from_webpage(self, page: Page, year: int, quarter: int, 
+    async def _download_from_webpage(self, page: Page, year: int, quarter: int, 
                                 search_title: str) -> DownloadResult:
         """從網頁動態抓取財務報告連結 (備用方案)"""
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url, timeout=60000)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(3000)
+        await page.goto(self.bank_url, timeout=60000)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(3000)
         
         # 點擊財務資訊 tab
         finance_tab = page.locator('text=財務資訊').first
         if finance_tab:
-            finance_tab.click()
-            page.wait_for_timeout(2000)
+            await finance_tab.click()
+            await page.wait_for_timeout(2000)
         
         # 找到目標季度的下載按鈕
         q_head = page.locator(f'div.collapse-block-head:has(div:has-text("{search_title}"))').first
@@ -151,15 +151,15 @@ class RakutenBankDownloader(BaseBankDownloader):
         
         try:
             # 使用 expect_download 捕獲下載
-            with page.expect_download(timeout=30000) as download_info:
-                download_btn.click()
+            async with page.expect_download(timeout=30000) as download_info:
+                await download_btn.click()
             
-            download = download_info.value
+            download = await download_info.value
             
             # 儲存 PDF
             file_path = self.get_file_path(year, quarter)
             self.ensure_dir(year, quarter)
-            download.save_as(file_path)
+            await download.save_as(file_path)
             
             return DownloadResult(
                 status=DownloadStatus.SUCCESS,
@@ -173,10 +173,10 @@ class RakutenBankDownloader(BaseBankDownloader):
                 message=f"下載失敗: {str(e)}"
             )
     
-    def _download_pdf(self, page: Page, pdf_url: str, year: int, quarter: int) -> DownloadResult:
+    async def _download_pdf(self, page: Page, pdf_url: str, year: int, quarter: int) -> DownloadResult:
         """下載 PDF 檔案"""
         try:
-            response = page.request.get(pdf_url)
+            response = await page.request.get(pdf_url)
             
             if not response.ok:
                 return DownloadResult(
@@ -184,7 +184,7 @@ class RakutenBankDownloader(BaseBankDownloader):
                     message=f"下載失敗: HTTP {response.status}"
                 )
             
-            content = response.body()
+            content = await response.body()
             
             # 驗證是否為 PDF
             if not content.startswith(b'%PDF'):

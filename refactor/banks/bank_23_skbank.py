@@ -3,7 +3,7 @@
 網址: https://www.skbank.com.tw/QFI
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class SKBankDownloader(BaseBankDownloader):
@@ -13,23 +13,23 @@ class SKBankDownloader(BaseBankDownloader):
     bank_code = 23
     bank_url = "https://www.skbank.com.tw/QFI"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         search_text = f"{year}年{quarter_text}"  # 例如: 114年第三季
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
         
         # 在 ul li 結構中找到目標季度的連結
         # li 中有 a 元素，會寫「114年第三季」這樣的字樣
         target_link = None
-        li_elements = page.query_selector_all("ul li")
+        li_elements = await page.query_selector_all("ul li")
         
         for li in li_elements:
             link = li.query_selector("a")
             if link:
-                link_text = link.inner_text()
+                link_text = await link.inner_text()
                 if str(year) in link_text and quarter_text in link_text:
                     target_link = link
                     break
@@ -41,15 +41,15 @@ class SKBankDownloader(BaseBankDownloader):
             )
         
         # 點擊連結進入子頁面
-        target_link.click()
-        page.wait_for_load_state("networkidle")
+        await target_link.click()
+        await page.wait_for_load_state("networkidle")
         
         # 在子頁面找「資產品質」連結
         asset_quality_link = None
-        all_links = page.query_selector_all("a")
+        all_links = await page.query_selector_all("a")
         
         for link in all_links:
-            link_text = link.inner_text()
+            link_text = await link.inner_text()
             if "資產品質" in link_text:
                 asset_quality_link = link
                 break
@@ -61,7 +61,7 @@ class SKBankDownloader(BaseBankDownloader):
             )
         
         # 取得 PDF 連結並下載
-        pdf_href = asset_quality_link.get_attribute("href")
+        pdf_href = await asset_quality_link.get_attribute("href")
         if not pdf_href:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
@@ -70,4 +70,4 @@ class SKBankDownloader(BaseBankDownloader):
         
         pdf_url = pdf_href if pdf_href.startswith("http") else f"https://www.skbank.com.tw{pdf_href}"
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

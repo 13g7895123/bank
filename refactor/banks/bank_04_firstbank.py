@@ -3,7 +3,7 @@
 網址: https://www.firstbank.com.tw/sites/fcb/Statutory
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class FirstBankDownloader(BaseBankDownloader):
@@ -15,13 +15,13 @@ class FirstBankDownloader(BaseBankDownloader):
     headless = False  # 強制使用有頭模式（網站有反爬蟲機制，無頭模式無法載入）
     retry_with_head = False  # 已經是有頭模式，不需要重試
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 建立要搜尋的 title 關鍵字
         # 網站格式多變，例如:
@@ -44,7 +44,7 @@ class FirstBankDownloader(BaseBankDownloader):
         link = None
         for keyword in search_keywords:
             locator = page.locator(f'a[title*="{keyword}"]')
-            if locator.count() > 0:
+            if await locator.count() > 0:
                 link = locator.first
                 break
         
@@ -55,4 +55,4 @@ class FirstBankDownloader(BaseBankDownloader):
             )
         
         # 使用點擊下載（該銀行的連結需要 JavaScript 處理）
-        return self.download_pdf_by_click(page, link, year, quarter)
+        return await self.download_pdf_by_click(page, link, year, quarter)

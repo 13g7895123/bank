@@ -3,7 +3,7 @@
 網址: https://www.sc.com/tw/about-us/investor-relations/
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class SCBDownloader(BaseBankDownloader):
@@ -13,7 +13,7 @@ class SCBDownloader(BaseBankDownloader):
     bank_code = 17
     bank_url = "https://www.sc.com/tw/about-us/investor-relations/"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         # 直接嘗試固定 URL 格式
         if quarter == 1 or quarter == 3:
             pdf_url = f"https://av.sc.com/tw/content/docs/tw-fi-{year}q{quarter}.pdf"
@@ -22,4 +22,4 @@ class SCBDownloader(BaseBankDownloader):
             half = quarter // 2
             pdf_url = f"https://av.sc.com/tw/content/docs/tw-earnings-{year}_h{half}.pdf"
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

@@ -8,7 +8,7 @@ URL 格式說明：
 - 2024-2025: /{year}/{year}-q{q}-consol-financial.pdf
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class KGIBankDownloader(BaseBankDownloader):
@@ -41,7 +41,7 @@ class KGIBankDownloader(BaseBankDownloader):
             # 2022 年及之前使用舊格式
             return f"{base}/{year_ad}/{year_ad}-q{quarter}-consolidated-financial-statement.pdf"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         year_ad = year + 1911  # 民國轉西元
         
@@ -51,29 +51,29 @@ class KGIBankDownloader(BaseBankDownloader):
         # 驗證 URL 是否可用
         response = page.request.head(pdf_url)
         if response.ok:
-            return self.download_pdf_from_url(page, pdf_url, year, quarter)
+            return await self.download_pdf_from_url(page, pdf_url, year, quarter)
         
         # 如果直接 URL 失敗，使用網頁動態抓取
-        return self._download_from_webpage(page, year, quarter, year_ad, quarter_text)
+        return await self._download_from_webpage(page, year, quarter, year_ad, quarter_text)
     
-    def _download_from_webpage(self, page: Page, year: int, quarter: int, 
+    async def _download_from_webpage(self, page: Page, year: int, quarter: int, 
                                 year_ad: int, quarter_text: str) -> DownloadResult:
         """從網頁動態抓取財務報告連結"""
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 滾動到財務報告區塊
-        page.evaluate("window.scrollTo(0, 800)")
-        page.wait_for_timeout(500)
+        await page.evaluate("window.scrollTo(0, 800)")
+        await page.wait_for_timeout(500)
         
         # 找到年份選擇按鈕
         year_btn = None
-        arrows = page.query_selector_all("[class*='arrowDown']")
+        arrows = await page.query_selector_all("[class*='arrowDown']")
         for arrow in arrows:
-            if arrow.is_visible():
-                text = arrow.inner_text().strip()
+            if await arrow.is_visible():
+                text = (await arrow.inner_text()).strip()
                 if text.isdigit() and 2015 <= int(text) <= 2030:
                     year_btn = arrow
                     break
@@ -85,18 +85,18 @@ class KGIBankDownloader(BaseBankDownloader):
             )
         
         # 點擊年份按鈕展開下拉選單
-        year_btn.click()
-        page.wait_for_timeout(800)
+        await year_btn.click()
+        await page.wait_for_timeout(800)
         
         # 選擇目標年份
-        year_options = page.query_selector_all("a, li, div")
+        year_options = await page.query_selector_all("a, li, div")
         year_selected = False
         for opt in year_options:
-            if opt.is_visible():
-                text = opt.inner_text().strip()
+            if await opt.is_visible():
+                text = (await opt.inner_text()).strip()
                 if text == str(year_ad):
-                    opt.click()
-                    page.wait_for_timeout(1500)
+                    await opt.click()
+                    await page.wait_for_timeout(1500)
                     year_selected = True
                     break
         
@@ -107,11 +107,11 @@ class KGIBankDownloader(BaseBankDownloader):
             )
         
         # 查找合併財務報告連結
-        links = page.query_selector_all("a[href*='financial-report']")
+        links = await page.query_selector_all("a[href*='financial-report']")
         pdf_url = None
         
         for link in links:
-            href = link.get_attribute("href") or ""
+            href = await link.get_attribute("href") or ""
             # 確認是目標年份和季度的合併財務報告
             if str(year_ad) in href and f"-q{quarter}-" in href:
                 # 優先選擇合併財務報告 (consolidated 或 consol)
@@ -127,4 +127,4 @@ class KGIBankDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} 的合併財務報告"
             )
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

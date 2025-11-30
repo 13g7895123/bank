@@ -8,7 +8,7 @@
 - Q4 對應「年度」或「第四季」
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class YuantaBankDownloader(BaseBankDownloader):
@@ -18,7 +18,7 @@ class YuantaBankDownloader(BaseBankDownloader):
     bank_code = 29
     bank_url = "https://www.yuantabank.com.tw/bank/bulletin/statutoryDisclosure/list.do"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 使用財務業務資訊頁面
@@ -31,16 +31,16 @@ class YuantaBankDownloader(BaseBankDownloader):
             search_patterns = [f"{year}年度{quarter_text}", f"{year}年{quarter_text}"]
         
         # 前往財報頁面
-        page.goto(url)
-        page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(3000)
+        await page.goto(url)
+        await page.wait_for_load_state("domcontentloaded")
+        await page.wait_for_timeout(3000)
         
         # 搜尋連結
         links = page.locator("a")
         target_link = None
         
-        for i in range(links.count()):
-            text = links.nth(i).inner_text().strip()
+        for i in range(await links.count()):
+            text = await links.nth(i).inner_text().strip()
             for pattern in search_patterns:
                 if pattern in text:
                     target_link = links.nth(i)
@@ -54,7 +54,7 @@ class YuantaBankDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} 的資料"
             )
         
-        href = target_link.get_attribute("href")
+        href = await target_link.get_attribute("href")
         if not href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,
@@ -63,4 +63,4 @@ class YuantaBankDownloader(BaseBankDownloader):
         
         pdf_url = href if href.startswith("http") else f"https://www.yuantabank.com.tw{href}"
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

@@ -3,7 +3,7 @@
 網址: https://www.tcbbank.com.tw/Site/intro/finReport/finReport.aspx
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class TaichungBankDownloader(BaseBankDownloader):
@@ -54,7 +54,7 @@ class TaichungBankDownloader(BaseBankDownloader):
                     result += chinese_digits[one]
                 return result
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 將民國年轉為中文，例如 114 -> 一百一十四
@@ -71,9 +71,9 @@ class TaichungBankDownloader(BaseBankDownloader):
         target_quarter = quarter_names[quarter]
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 在 table tbody 中找到對應年度的 tr
         pdf_url = None
@@ -84,7 +84,7 @@ class TaichungBankDownloader(BaseBankDownloader):
         for tr in tr_elements:
             # 找 tr > td
             td = tr.locator("td").first
-            if td.count() == 0:
+            if await td.count() == 0:
                 continue
             
             # td 底下有多個 div
@@ -99,10 +99,10 @@ class TaichungBankDownloader(BaseBankDownloader):
             first_div = td_divs[0]
             year_title_div = first_div.locator("div[class*='year-title']")
             
-            if year_title_div.count() == 0:
+            if await year_title_div.count() == 0:
                 continue
             
-            year_text = year_title_div.first.inner_text().strip()
+            year_text = (await year_title_div.first.inner_text()).strip()
             
             if year_title not in year_text:
                 continue
@@ -111,10 +111,10 @@ class TaichungBankDownloader(BaseBankDownloader):
             quarters_div = td_divs[1]
             
             # 找各季度的 div
-            quarter_divs = quarters_div.locator("> div").all()
+            quarter_divs = await quarters_div.locator("> div").all()
             
             for q_div in quarter_divs:
-                q_text = q_div.inner_text().strip()
+                q_text = await (await q_div.inner_text()).strip()
                 
                 if target_quarter in q_text:
                     # 找到目標季度，取得 a 元素
@@ -145,12 +145,12 @@ class TaichungBankDownloader(BaseBankDownloader):
             file_path = self.get_file_path(year, quarter)
             
             # 先導向 PDF URL
-            page.goto(pdf_url, wait_until="networkidle")
-            page.wait_for_timeout(2000)
+            await page.goto(pdf_url, wait_until="networkidle")
+            await page.wait_for_timeout(2000)
             
             # 使用 JavaScript fetch 取得 PDF 內容 (以 base64 形式)
             import base64
-            result = page.evaluate('''
+            result = await page.evaluate('''
                 async () => {
                     try {
                         const response = await fetch(window.location.href);

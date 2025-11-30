@@ -9,7 +9,7 @@
 import subprocess
 import os
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class HNCBDownloader(BaseBankDownloader):
@@ -20,23 +20,23 @@ class HNCBDownloader(BaseBankDownloader):
     bank_url = "https://www.hnfhc.com.tw/HNFHC/ir/d.do"
     headless = True  # 預設無頭模式，失敗時自動重試有頭模式
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 民國年轉西元年
         western_year = year + 1911
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 步驟1: 切換年份下拉選單
         year_select = page.locator('select#year')
-        if year_select.count() > 0:
-            year_select.select_option(str(western_year))
-            page.wait_for_load_state("networkidle")
-            page.wait_for_timeout(2000)
+        if await year_select.count() > 0:
+            await year_select.select_option(str(western_year))
+            await page.wait_for_load_state("networkidle")
+            await page.wait_for_timeout(2000)
         
         # 步驟2: 建立搜尋的 title 關鍵字
         # 格式: "下載 華南銀行2025年第1季合併財務報告.pdf"
@@ -57,7 +57,7 @@ class HNCBDownloader(BaseBankDownloader):
         link = None
         for keyword in search_keywords:
             locator = page.locator(f'a[title*="{keyword}"]')
-            if locator.count() > 0:
+            if await locator.count() > 0:
                 link = locator.first
                 break
         
@@ -68,7 +68,7 @@ class HNCBDownloader(BaseBankDownloader):
             )
         
         # 取得 href（直接 PDF URL）
-        href = link.get_attribute("href")
+        href = await link.get_attribute("href")
         if not href:
             return DownloadResult(
                 status=DownloadStatus.ERROR,

@@ -3,7 +3,7 @@
 網址: https://www.hsbc.com.tw/help/announcements/
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class HSBCDownloader(BaseBankDownloader):
@@ -13,26 +13,26 @@ class HSBCDownloader(BaseBankDownloader):
     bank_code = 20
     bank_url = "https://www.hsbc.com.tw/help/announcements/"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         year_ad = year + 1911  # 民國轉西元
         quarter_map = {1: "第一季", 2: "第二季", 3: "第三季", 4: "第四季"}
         quarter_text = quarter_map.get(quarter, "")
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(3000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(3000)
         
         # 搜尋目標連結 - 格式: "2025年第一季重要財務業務資訊"
         target_text = f"{year_ad}年{quarter_text}重要財務業務資訊"
         
         # 找所有連結
-        links = page.query_selector_all("a")
+        links = await page.query_selector_all("a")
         
         pdf_url = None
         for link in links:
-            text = link.inner_text().strip()
-            href = link.get_attribute("href") or ""
+            text = await (await link.inner_text()).strip()
+            href = await link.get_attribute("href") or ""
             
             # 匹配目標文字
             if target_text in text and href.endswith(".pdf"):
@@ -48,4 +48,4 @@ class HSBCDownloader(BaseBankDownloader):
                 message=f"找不到 {year}年{quarter_text} 的資料"
             )
         
-        return self.download_pdf_from_url(page, pdf_url, year, quarter)
+        return await self.download_pdf_from_url(page, pdf_url, year, quarter)

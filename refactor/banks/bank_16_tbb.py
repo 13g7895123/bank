@@ -5,7 +5,7 @@
 import subprocess
 import os
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 class TBBDownloader(BaseBankDownloader):
@@ -15,23 +15,23 @@ class TBBDownloader(BaseBankDownloader):
     bank_code = 16
     bank_url = "https://ir.tbb.com.tw/financial/quarterly-results"
     
-    def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
+    async def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
         quarter_text = self.get_quarter_text(quarter)
         
         # 民國年轉西元年
         western_year = year + 1911
         
         # 前往財報頁面
-        page.goto(self.bank_url)
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
+        await page.goto(self.bank_url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(2000)
         
         # 點選年份 (href="?y=2025" 的 a tag)
         year_link = page.locator(f'a[href="?y={western_year}"]')
-        if year_link.count() > 0:
-            year_link.first.click()
-            page.wait_for_load_state("networkidle")
-            page.wait_for_timeout(1000)
+        if await year_link.count() > 0:
+            await year_link.first.click()
+            await page.wait_for_load_state("networkidle")
+            await page.wait_for_timeout(1000)
         
         # 建立搜尋的報告名稱
         # 格式: "2025年第一季合併財務報告" 或 "2024年度合併財務報告" (第四季)
@@ -52,18 +52,18 @@ class TBBDownloader(BaseBankDownloader):
         pdf_url = None
         
         # 找所有的 li 元素
-        li_elements = page.locator("ul li").all()
+        li_elements = await page.locator("ul li").all()
         
         for li in li_elements:
             # 檢查 li 底下的 p 元素是否包含目標文字
             p_element = li.locator("p")
-            if p_element.count() > 0:
-                p_text = p_element.first.inner_text().strip()
+            if await p_element.count() > 0:
+                p_text = (await p_element.first.inner_text()).strip()
                 if search_text in p_text:
                     # 找到目標 li，取得 a.download 的 href
                     download_link = li.locator("a.download")
-                    if download_link.count() > 0:
-                        href = download_link.first.get_attribute("href")
+                    if await download_link.count() > 0:
+                        href = await download_link.first.get_attribute("href")
                         if href:
                             # 組合完整 URL
                             if href.startswith("http"):
