@@ -4,8 +4,7 @@
 
 網頁結構：
 - 預設顯示「財務業務資訊」tab
-- 表格格式: 年度標題行 + 季度資料行
-- Q4 對應「年度」
+- 表格格式: 年度標題行 (如 "114年度") + 季度資料行 (第一季~第四季)
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
 from playwright.sync_api import Page
@@ -19,50 +18,50 @@ class EntieBankDownloader(BaseBankDownloader):
     bank_url = "https://www.entiebank.com.tw/entie/disclosure-financial"
     
     def _download(self, page: Page, year: int, quarter: int) -> DownloadResult:
-        quarter_text = self.get_quarter_text(quarter)
+        quarter_map = {1: "第一季", 2: "第二季", 3: "第三季", 4: "第四季"}
+        quarter_text = quarter_map[quarter]
         
         # 前往財報頁面
         page.goto(self.bank_url)
         page.wait_for_load_state("domcontentloaded")
         page.wait_for_timeout(5000)
         
-        # 搜尋連結
-        # Q4 對應「年度」，Q1-Q3 對應「第X季」
-        if quarter == 4:
-            search_patterns = [f"{year}年度", f"{year}年第四季"]
-        else:
-            search_patterns = [f"{quarter_text}"]
+        # 找表格，解析年度與季度結構
+        table = page.query_selector("table")
+        if not table:
+            return DownloadResult(
+                status=DownloadStatus.NO_DATA,
+                message="找不到資料表格"
+            )
         
-        # 找所有連結
-        links = page.locator("a")
-        target_link = None
+        rows = table.query_selector_all("tr")
+        current_year = None
+        pdf_url = None
         
-        for i in range(links.count()):
-            text = links.nth(i).inner_text().strip()
-            href = links.nth(i).get_attribute("href") or ""
+        for row in rows:
+            text = row.inner_text().strip()
             
-            # 檢查是否匹配年度和季度
-            if str(year) in text or str(year) in href:
-                for pattern in search_patterns:
-                    if pattern in text:
-                        target_link = links.nth(i)
+            # 檢查是否為年度行 (格式: "114年度")
+            if "年度" in text and text.replace("年度", "").isdigit():
+                current_year = int(text.replace("年度", ""))
+                continue
+            
+            # 如果當前年度匹配，找季度連結
+            if current_year == year:
+                links = row.query_selector_all("a")
+                for link in links:
+                    link_text = link.inner_text().strip()
+                    if link_text == quarter_text:
+                        href = link.get_attribute("href")
+                        pdf_url = href if href.startswith("http") else f"https://www.entiebank.com.tw{href}"
                         break
-            if target_link:
-                break
+                if pdf_url:
+                    break
         
-        if not target_link:
+        if not pdf_url:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message=f"找不到 {year}年{quarter_text} 的資料"
             )
-        
-        href = target_link.get_attribute("href")
-        if not href:
-            return DownloadResult(
-                status=DownloadStatus.ERROR,
-                message="無法取得下載連結"
-            )
-        
-        pdf_url = href if href.startswith("http") else f"https://www.entiebank.com.tw{href}"
         
         return self.download_pdf_from_url(page, pdf_url, year, quarter)

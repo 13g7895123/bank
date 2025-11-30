@@ -20,6 +20,17 @@ class TaishinBankDownloader(BaseBankDownloader):
         page.goto(self.bank_url)
         page.wait_for_load_state("networkidle")
         
+        # 使用 JavaScript 切換年份下拉選單
+        page.evaluate(f'''() => {{
+            const selects = document.querySelectorAll('select');
+            const yearSelect = selects[selects.length - 1];
+            if (yearSelect) {{
+                yearSelect.value = '{year_ad}';
+                yearSelect.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            }}
+        }}''')
+        page.wait_for_timeout(2000)
+        
         # 找資料區塊
         table = page.query_selector("div.ts-comp-076.btn-two")
         if not table:
