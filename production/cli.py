@@ -10,6 +10,7 @@
 
 import os
 import sys
+import asyncio
 from pathlib import Path
 from typing import Optional, Tuple
 from dataclasses import dataclass
@@ -218,7 +219,7 @@ def download_single_bank(year: int, quarter: int) -> bool:
     print_info(f"正在下載 {bank_name} {year}Q{quarter} 財報...")
     
     downloader = BankDownloader(data_dir=str(get_data_dir()))
-    result = downloader.download(bank_name, year, quarter)
+    result = asyncio.run(downloader.download(bank_name, year, quarter))
     
     if result.status == DownloadStatus.SUCCESS:
         print_success(f"下載成功: {result.file_path}")
@@ -256,7 +257,7 @@ def download_all_banks(year: int, quarter: int) -> Tuple[int, int]:
     for idx, bank_name in enumerate(BANK_DOWNLOADERS.keys(), 1):
         print(f"[{idx:02d}/{total}] {bank_name}... ", end="", flush=True)
         
-        result = downloader.download(bank_name, year, quarter)
+        result = asyncio.run(downloader.download(bank_name, year, quarter))
         
         if result.status == DownloadStatus.SUCCESS:
             print(f"{Color.GREEN}成功{Color.RESET}")
