@@ -1,6 +1,11 @@
 """
 臺灣土地銀行 (2) - Land Bank of Taiwan
 網址: https://www.landbank.com.tw/Category/Items/財務業務資訊-財報
+
+表格結構說明：
+- 表格每兩行為一組：第一行是年度標題+季度標題，第二行是對應的下載連結
+- row[0]: td[0]=114年度, td[1]=第一季標題, td[2]=第二季標題, td[3]=第三季標題, td[4]=全年度標題
+- row[1]: td[0]=財務報告連結, td[1]=財務報告連結, td[2]=財務報告連結, td[3]=財務報告連結
 """
 from .base import BaseBankDownloader, DownloadResult, DownloadStatus
 from playwright.sync_api import Page
@@ -32,54 +37,57 @@ class LandBankDownloader(BaseBankDownloader):
         
         # 點擊展開
         expand_btn.click()
-        page.wait_for_timeout(1000)  # 等待展開動畫
+        page.wait_for_timeout(1500)  # 等待展開動畫
         
-        # 步驟2: 在 tbody 中找到指定年度的 tr
-        # 表格結構: tbody > tr > th(年度) + td > a(季度連結)
+        # 步驟2: 找到包含指定年度的表格列
+        # 表格結構：年度標題在 td[0]，連結在下一行
         year_str = f"{year}年度"
+        rows = page.locator('tbody tr')
+        row_count = rows.count()
         
-        # 找到 th 包含指定年度的 tr
-        target_row = page.locator(f'tbody tr:has(th:text("{year_str}"))')
+        target_row_idx = -1
+        for i in range(row_count):
+            row = rows.nth(i)
+            first_td = row.locator('td').first
+            if first_td.count() > 0:
+                text = first_td.text_content().strip()
+                if year_str in text:
+                    target_row_idx = i
+                    break
         
-        if target_row.count() == 0:
-            # 嘗試其他年度格式
-            target_row = page.locator(f'tbody tr:has(th:text("{year}年"))')
-        
-        if target_row.count() == 0:
+        if target_row_idx == -1:
             return DownloadResult(
                 status=DownloadStatus.NO_DATA,
                 message=f"找不到 {year} 年度的資料列"
             )
         
-        # 步驟3: 在該 tr 中找到對應季度的連結
-        # 季度對應: 1=第一季, 2=第二季, 3=第三季, 4=全年度
-        quarter_mapping = {
-            1: "第一季",
-            2: "第二季", 
-            3: "第三季",
-            4: "全年度"
-        }
+        # 步驟3: 取得下一行（連結行）的對應季度連結
+        # 季度對應欄位: Q1=td[0], Q2=td[1], Q3=td[2], Q4=td[3]
+        link_row = rows.nth(target_row_idx + 1)
+        tds = link_row.locator('td')
+        td_count = tds.count()
         
-        quarter_name = quarter_mapping.get(quarter, f"第{quarter}季")
+        # 季度對應的 td 索引（第一季=0, 第二季=1, 第三季=2, 第四季/全年度=3）
+        quarter_td_idx = quarter - 1
         
-        # 找該列中包含季度文字的 a 連結
-        quarter_link = target_row.locator(f'td a:has-text("{quarter_name}")')
+        if td_count <= quarter_td_idx:
+            return DownloadResult(
+                status=DownloadStatus.NO_DATA,
+                message=f"找不到 {year}年{quarter_text} 的下載連結"
+            )
+        
+        target_td = tds.nth(quarter_td_idx)
+        quarter_link = target_td.locator('a:has-text("財務報告")')
         
         if quarter_link.count() == 0:
-            # 嘗試用 td 的順序來找（第1個td=第一季, 第2個=第二季...）
-            tds = target_row.locator('td')
-            td_count = tds.count()
-            
-            if td_count >= quarter:
-                # 取得對應的 td（索引從 0 開始）
-                target_td = tds.nth(quarter - 1)
-                quarter_link = target_td.locator('a')
-            
-            if quarter_link.count() == 0:
-                return DownloadResult(
-                    status=DownloadStatus.NO_DATA,
-                    message=f"找不到 {year}年{quarter_name} 的下載連結"
-                )
+            # 嘗試找任何 a 連結
+            quarter_link = target_td.locator('a')
+        
+        if quarter_link.count() == 0:
+            return DownloadResult(
+                status=DownloadStatus.NO_DATA,
+                message=f"找不到 {year}年{quarter_text} 的財務報告連結"
+            )
         
         # 取得 PDF URL
         href = quarter_link.first.get_attribute("href")

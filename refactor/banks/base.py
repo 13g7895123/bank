@@ -37,7 +37,7 @@ class BaseBankDownloader(ABC):
     retry_with_head: bool = True  # 無頭模式失敗時是否自動重試有頭模式
     browser_type: str = "chromium"  # 瀏覽器類型: chromium, firefox, webkit
     
-    def __init__(self, data_dir: str = "../data"):
+    def __init__(self, data_dir: str = "data"):
         self.data_dir = data_dir
         
     def get_quarter_text(self, quarter: int) -> str:

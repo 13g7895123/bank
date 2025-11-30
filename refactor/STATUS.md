@@ -1,6 +1,6 @@
 # 銀行財報系統 - 當前狀態報告
 
-> 更新日期：2025-11-29 22:50（113Q4 完整測試）
+> 更新日期：2025-11-30 10:42（修復 02 臺灣土地銀行下載器 + 修正 refactor 路徑）
 
 ## 系統概覽
 
@@ -60,46 +60,46 @@
 
 ## 各銀行狀態明細（113Q4 測試結果）
 
-| 代碼 | 銀行名稱 | 下載 | 解析 | 備註 |
-|------|----------|------|------|------|
-| 01 | 臺灣銀行 | ⚠️ 無資料 | - | 113Q4 尚無資料 |
-| 02 | 臺灣土地銀行 | ⚠️ 無資料 | - | 113Q4 尚無資料 |
-| 03 | 合作金庫商業銀行 | ✅ | ✅ 8/8 | |
-| 04 | 第一商業銀行 | ✅ | ✅ 8/8 | 使用有頭模式 |
-| 05 | 華南商業銀行 | ⚠️ 無資料 | - | 113Q4 尚無資料 |
-| 06 | 彰化商業銀行 | ⚠️ 無資料 | - | 113Q4 尚無資料 |
-| 07 | 上海商業儲蓄銀行 | ⚠️ 無資料 | - | 僅保留 114 年資料 |
-| 08 | 台北富邦銀行 | ✅ | ✅ 8/8 | |
-| 09 | 國泰世華商業銀行 | ❌ Timeout | - | 需修復下載器 |
-| 10 | 中國輸出入銀行 | ✅ | ⚠️ 3/8 | 政策性銀行，無消費金融 |
-| 11 | 高雄銀行 | ✅ | ✅ 8/8 | |
-| 12 | 兆豐國際商業銀行 | ✅ | ❌ 0/8 | PDF 解析失敗 |
-| 13 | 花旗（台灣）銀行 | ❌ Timeout | - | 需修復下載器 |
-| 15 | 王道商業銀行 | ❌ Timeout | - | 需修復下載器 |
-| 16 | 臺灣中小企業銀行 | ❌ 環境問題 | - | 需要 wget 工具 |
-| 17 | 渣打國際商業銀行 | ✅ | ⚠️ 7/8 | 缺少 1 類別 |
-| 18 | 台中商業銀行 | ❌ Timeout | - | 需修復下載器 |
-| 19 | 京城商業銀行 | ❌ 網路錯誤 | - | 連線問題 |
-| 20 | 匯豐(台灣)商業銀行 | ✅ | ✅ 8/8 | |
-| 21 | 瑞興商業銀行 | ✅ | ❌ 0/8 | 掃描式 PDF，需 OCR |
-| 22 | 華泰商業銀行 | ❌ 網路錯誤 | - | 連線問題 |
-| 23 | 臺灣新光商業銀行 | ✅ | ❌ 0/8 | PDF 解析失敗 |
-| 24 | 陽信商業銀行 | ✅ | ✅ 8/8 | |
-| 25 | 板信商業銀行 | ❌ 網路錯誤 | - | 連線問題 |
-| 26 | 三信商業銀行 | ⚠️ 無資料 | - | 僅保留 114 年資料 |
-| 27 | 聯邦商業銀行 | ✅ | ❌ 0/8 | PDF Pattern 解析錯誤 |
-| 28 | 遠東國際商業銀行 | ⚠️ 無資料 | - | 113Q4 尚無資料 |
-| 29 | 元大商業銀行 | ⚠️ 無資料 | - | 113Q4 尚無資料 |
-| 30 | 永豐商業銀行 | ✅ | ✅ 8/8 | |
-| 31 | 玉山商業銀行 | ✅ | ✅ 8/8 | |
-| 32 | 凱基商業銀行 | ✅ | ✅ 8/8 | |
-| 33 | 星展(台灣)商業銀行 | ✅ | ❌ 0/8 | PDF 特殊格式 |
-| 34 | 台新國際商業銀行 | ⚠️ 無資料 | - | 113Q4 尚無資料 |
-| 36 | 安泰商業銀行 | ⚠️ 無資料 | - | 僅保留 114 年資料 |
-| 37 | 中國信託商業銀行 | ✅ | ⚠️ 5/8 | 缺少 3 類別 |
-| 38 | 樂天國際商業銀行 | ❌ 環境問題 | - | Chromium 路徑問題 |
-| 40 | 連線商業銀行 | ✅ | ✅ 8/8 | LINE Bank |
-| 41 | 將來商業銀行 | ❌ Timeout | - | 需修復下載器 |
+| 代碼 | 銀行名稱 | 下載 | 解析 | 財報網址 |
+|------|----------|------|------|----------|
+| 01 | 臺灣銀行 | ✅ | ✅ 8/8 | https://www.bot.com.tw/tw/about/financial-statements/quarterly-report |
+| 02 | 臺灣土地銀行 | ✅ | ✅ 8/8 | https://www.landbank.com.tw/Category/Items/財務業務資訊-財報 |
+| 03 | 合作金庫商業銀行 | ✅ | ✅ 8/8 | https://www.tcb-bank.com.tw/about-tcb/disclosure/bad-debt/asset-quality |
+| 04 | 第一商業銀行 | ✅ | ✅ 8/8 | https://www.firstbank.com.tw/sites/fcb/Statutory |
+| 05 | 華南商業銀行 | ⚠️ 無資料 | - | https://www.hnfhc.com.tw/HNFHC/ir/d.do |
+| 06 | 彰化商業銀行 | ⚠️ 無資料 | - | https://www.bankchb.com/frontend/finance.jsp |
+| 07 | 上海商業儲蓄銀行 | ⚠️ 無資料 | - | https://www.scsb.com.tw/content/about/about04_a_01.jsp |
+| 08 | 台北富邦銀行 | ✅ | ✅ 8/8 | https://www.fubon.com/banking/about/intro_FBB/Financial_status.htm |
+| 09 | 國泰世華商業銀行 | ❌ Timeout | - | https://www.cathaybk.com.tw/cathaybk/personal/about/news/announce/ |
+| 10 | 中國輸出入銀行 | ✅ | ⚠️ 3/8 | https://www.eximbank.com.tw/zh-tw/FinanceInfo/Finance/Pages/default.aspx |
+| 11 | 高雄銀行 | ✅ | ✅ 8/8 | https://www.bok.com.tw/-107 |
+| 12 | 兆豐國際商業銀行 | ✅ | ❌ 0/8 | https://www.megabank.com.tw/about/announcement/news/regulatory-disclosures/finance-report |
+| 13 | 花旗（台灣）銀行 | ❌ Timeout | - | https://www.citibank.com.tw/global_docs/chi/pressroom/financial_info/financial.htm |
+| 15 | 王道商業銀行 | ❌ Timeout | - | https://www.o-bank.com/common/regulation/regulation-financialreport |
+| 16 | 臺灣中小企業銀行 | ❌ 環境問題 | - | https://ir.tbb.com.tw/financial/quarterly-results |
+| 17 | 渣打國際商業銀行 | ✅ | ⚠️ 7/8 | https://www.sc.com/tw/about-us/investor-relations/ |
+| 18 | 台中商業銀行 | ❌ Timeout | - | https://www.tcbbank.com.tw/Site/intro/finReport/finReport.aspx |
+| 19 | 京城商業銀行 | ❌ 網路錯誤 | - | https://customer.ktb.com.tw/new/about/8d88e237 |
+| 20 | 匯豐(台灣)商業銀行 | ✅ | ✅ 8/8 | https://www.hsbc.com.tw/help/announcements/ |
+| 21 | 瑞興商業銀行 | ✅ | ❌ 0/8 | https://www.taipeistarbank.com.tw/StatutoryDisclosure/FinancialReports |
+| 22 | 華泰商業銀行 | ❌ 網路錯誤 | - | https://www.hwataibank.com.tw/public/public02-01/ |
+| 23 | 臺灣新光商業銀行 | ✅ | ❌ 0/8 | https://www.skbank.com.tw/QFI |
+| 24 | 陽信商業銀行 | ✅ | ✅ 8/8 | https://www.sunnybank.com.tw/net/Page/Smenu/4 |
+| 25 | 板信商業銀行 | ❌ 網路錯誤 | - | https://www.bop.com.tw/Footer/Financial_Report |
+| 26 | 三信商業銀行 | ⚠️ 無資料 | - | https://www.cotabank.com.tw/web/public/expose/#tab-財務業務資訊 |
+| 27 | 聯邦商業銀行 | ✅ | ❌ 0/8 | https://www.ubot.com.tw/investors |
+| 28 | 遠東國際商業銀行 | ⚠️ 無資料 | - | https://www.feib.com.tw/detail?id=349 |
+| 29 | 元大商業銀行 | ⚠️ 無資料 | - | https://www.yuantabank.com.tw/bank/bulletin/statutoryDisclosure/list.do |
+| 30 | 永豐商業銀行 | ✅ | ✅ 8/8 | https://bank.sinopac.com/sinopacBT/about/investor/financial-statement.html |
+| 31 | 玉山商業銀行 | ✅ | ✅ 8/8 | https://doc.twse.com.tw/server-java/t57sb01 |
+| 32 | 凱基商業銀行 | ✅ | ✅ 8/8 | https://www.kgibank.com.tw/zh-tw/about-us/financial-summary |
+| 33 | 星展(台灣)商業銀行 | ✅ | ❌ 0/8 | https://www.dbs.com.tw/personal-zh/legal-disclaimers-and-announcements.page |
+| 34 | 台新國際商業銀行 | ⚠️ 無資料 | - | https://www.taishinbank.com.tw/TSB/about-taishin/brief-introduction-to-the-bank/financeInfo |
+| 36 | 安泰商業銀行 | ⚠️ 無資料 | - | https://www.entiebank.com.tw/entie/disclosure-financial |
+| 37 | 中國信託商業銀行 | ✅ | ⚠️ 5/8 | https://www.ctbcbank.com |
+| 38 | 樂天國際商業銀行 | ❌ 環境問題 | - | https://www.rakuten-bank.com.tw/portal/other/disclosure |
+| 40 | 連線商業銀行 | ✅ | ✅ 8/8 | https://corp.linebank.com.tw/zh-tw/company-financial |
+| 41 | 將來商業銀行 | ❌ Timeout | - | https://www.nextbank.com.tw/disclosures/download/52831e76d4000000d9ee07510ffac025 |
 
 > **註**：代碼 14、35、39 無對應銀行
 
@@ -148,6 +148,82 @@
 ---
 
 ## 已知問題與修復記錄
+
+#### 8. 臺灣土地銀行下載器修復 + refactor 路徑修正 (2025-11-30 修復)
+
+**問題描述**：
+1. **下載器問題**：原下載器使用 `th` 選擇器尋找年度列，但實際網頁結構使用 `td`
+2. **路徑問題**：`cli.py`、`main.py`、`report_generator.py` 使用 `parent.parent` 指向 bank 目錄，應為 refactor 目錄
+
+**表格結構說明**：
+- 每兩行為一組：第一行是年度標題+季度標題，第二行是對應的下載連結
+- row[0]: td[0]=114年度, td[1]=第一季標題, td[2]=第二季標題...
+- row[1]: td[0]=財務報告連結, td[1]=財務報告連結...
+
+**解決方案**：
+1. 修正下載器邏輯：
+   - 改用 `td` 定位年度列
+   - 取得下一行（連結行）的對應季度連結
+   - 修改檔案：`banks/bank_02_landbank.py`
+
+2. 修正路徑設定：
+   - `cli.py`：`get_base_dir()` 改為 `Path(__file__).parent`
+   - `main.py`：`run_report()` 改為 `Path(__file__).parent`
+   - `report_generator.py`：`__main__` 區塊改為 `Path(__file__).parent`
+
+**測試結果**：
+- 114Q1 下載成功 ✅（1.6 MB）
+- PDF 解析成功 8/8 類別 ✅
+- 路徑正確指向 refactor/data ✅
+
+#### 7. 臺灣土地銀行下載與解析驗證 (2025-11-30 驗證)
+
+**測試結果**：
+- 114Q1 下載成功 ✅（2.2 MB，檔案已存在）
+- PDF 解析成功 8/8 類別 ✅
+
+**解析資料摘要**（114Q1）：
+| 業務別項目 | 逾期放款(仟元) | 放款總額(仟元) | 逾放比率 |
+|------------|---------------|---------------|---------|
+| 企業金融_擔保 | 990,933 | 673,930,753 | 0.15% |
+| 企業金融_無擔保 | 228,122 | 496,848,569 | 0.05% |
+| 消費金融_住宅抵押貸款 | 1,074,313 | 1,163,073,214 | 0.09% |
+| 消費金融_現金卡 | 0 | 1,386 | 0.00% |
+| 消費金融_小額純信用貸款 | 5,588 | 3,984,597 | 0.14% |
+| 消費金融_其他_擔保 | 359,562 | 100,295,538 | 0.36% |
+| 消費金融_其他_無擔保 | 13,925 | 26,651,341 | 0.05% |
+| 合計 | 2,672,443 | 2,464,785,398 | 0.11% |
+
+#### 5. 臺灣銀行下載器修復 (2025-11-30 修復)
+
+**問題描述**：
+- URL 路徑缺少 `/tw`，導致無法正確載入財報頁面
+- 匹配字串格式錯誤：多餘空格、使用中文數字而非阿拉伯數字
+- 未支援年份切換下拉選單，無法下載 114 年資料
+
+**解決方案**：
+- 修正 URL：`/about/...` → `/tw/about/...`
+- 修正匹配字串：`個體財務報告 {year}年{quarter_text}` → `個體財務報告{year}年第{quarter}季`
+- 修正下載 URL：移除多餘的 `{domain}/` 前綴（link 已是完整 URL）
+- 新增年份切換功能：點擊下拉選單切換到指定年份
+- 修改位置：`get_Data.py` 第 40-85 行
+
+**測試結果**：
+- 113Q4 下載成功 ✅（2.98 MB）
+- 114Q1 下載成功 ✅（331 KB）
+- PDF 解析成功 8/8 類別 ✅
+- 已改用 Playwright 無頭模式（取代 Selenium）✅
+
+#### 6. 臺灣銀行 PDF 解析修復 (2025-11-30 修復)
+
+**問題描述**：
+- 114Q1 PDF 表格格式特殊：「企業金融」的「擔保」和「無擔保」在同一欄位，但數據在不同行
+- 原解析器無法正確識別「企業金融_無擔保」
+
+**解決方案**：
+- 新增 `pending_unsecured` 標記，處理跨行數據
+- 當偵測到「企業金融」且 col1 包含「擔保\n無擔保」時，本行為擔保，下一行為無擔保
+- 修改位置：`refactor/report_generator.py` 第 165-230 行
 
 ### 已修復問題
 
@@ -233,10 +309,10 @@
 | 17 | 渣打國際商業銀行 | 7/8 | 缺少 1 類別 |
 | 37 | 中國信託商業銀行 | 5/8 | 缺少 3 類別 |
 
-#### 4. 無資料（非錯誤）- 10 家
+#### 4. 無資料（非錯誤）- 9 家
 
 這些銀行的 113Q4 資料尚未發布，或網站僅保留近期資料：
-- 01 臺灣銀行、02 臺灣土地銀行、05 華南商業銀行、06 彰化商業銀行
+- 01 臺灣銀行、05 華南商業銀行、06 彰化商業銀行
 - 07 上海商業儲蓄銀行、26 三信商業銀行、28 遠東國際商業銀行
 - 29 元大商業銀行、34 台新國際商業銀行、36 安泰商業銀行
 
@@ -358,6 +434,7 @@ if is_scanned_pdf('path/to/pdf'):
 
 | 日期 | 版本 | 變更內容 |
 |------|------|----------|
+| 2025-11-30 | 2.2 | 修復臺灣銀行下載器（URL、年份切換）、修復解析器（企業金融跨行格式） |
 | 2024-11-29 | 2.1 | 新增 OCR 解析器、修復匯豐銀行下載器、新增下載器盤點文件 |
 | 2024-11-29 | 2.0 | 重構架構：新增 core/, utils/ 模組 |
 | 2024-11-29 | 1.1 | 修復企業金融類別解析問題 |

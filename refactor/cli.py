@@ -113,8 +113,8 @@ def parse_year_quarter(input_str: str) -> Tuple[Optional[int], Optional[int]]:
 
 
 def get_base_dir() -> Path:
-    """取得專案根目錄"""
-    return Path(__file__).parent.parent
+    """取得 refactor 專案根目錄"""
+    return Path(__file__).parent
 
 
 def get_data_dir() -> Path:

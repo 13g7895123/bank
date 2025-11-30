@@ -8,6 +8,7 @@ from selenium.webdriver.edge.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from playwright.sync_api import sync_playwright
 
 def downloadData(name, value, year_check, quarter_check):
     if os.path.isfile(f'data/{year_check}Q{quarter_check}/{value}_{name}_{year_check}Q{quarter_check}.pdf'):
@@ -39,16 +40,34 @@ def downloadData(name, value, year_check, quarter_check):
         
     if name == '臺灣銀行':
         domain = "https://www.bot.com.tw"
-        edge = webdriver.Edge(options=options)
-        edge.get(f"{domain}/about/financial-statements/quarterly-report")
-        time.sleep(5)
-        content = BeautifulSoup(edge.page_source, "html5lib")
+        
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(f"{domain}/tw/about/financial-statements/quarterly-report", wait_until="networkidle")
 
+            # 切換到指定年份（下拉選單預設為 113 年）
+            try:
+                select_button = page.locator("button.select-styled")
+                current_year = select_button.text_content().strip().replace("年", "")
+                if str(year_check) != current_year:
+                    select_button.click()
+                    page.wait_for_timeout(1000)
+                    page.locator(f"ul.select-options li:has-text('{year_check}年')").click()
+                    page.wait_for_timeout(2000)
+            except Exception as e:
+                print(f"切換年份失敗: {e}")
+
+            content = BeautifulSoup(page.content(), "html5lib")
+            browser.close()
+
+        # 網站 title 格式: "個體財務報告113年第2季.pdf(另開分頁)"
         table = content.find("app-document-download", class_="ng-star-inserted").find_all("div", class_="ng-star-inserted")
         check = 0
         for i in range(0, len(table)):
             if table[i].find("a") is not None:
-                if f"個體財務報告 {year_check}年{quarter_text}" in table[i].find("a").get("title"):
+                title = table[i].find("a").get("title")
+                if f"個體財務報告{year_check}年第{quarter_check}季" in title:
                     link = table[i].find("a").get("href")
                     check = 1
                     break
@@ -59,7 +78,7 @@ def downloadData(name, value, year_check, quarter_check):
 
         year = year_check
         quarter = quarter_check
-        response = requests.get(f"{domain}/{link}", proxies=proxies)
+        response = requests.get(link, proxies=proxies)
 
     if name == '臺灣土地銀行':
         domain = "https://www.landbank.com.tw"

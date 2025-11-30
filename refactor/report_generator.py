@@ -166,6 +166,7 @@ def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> 
     """從表格資料提取資產品質資訊"""
     results = []
     current_category = ""
+    pending_unsecured = False  # 標記下一行是否為企業金融無擔保
     
     for row in table:
         if not row or len(row) < 6:
@@ -183,11 +184,21 @@ def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> 
         
         subject = None
         
+        # 處理企業金融無擔保（延續上一行）
+        if pending_unsecured and not col0 and not col1:
+            subject = "企業金融_無擔保"
+            pending_unsecured = False
         # 判斷資料類型（col0/col1/col2 已正規化，無空格）
-        if "企業金融" in col0:
+        elif "企業金融" in col0:
             current_category = "企業金融"
-            if "擔保" in col1 and "無" not in col1:
-                subject = "企業金融_擔保"
+            # 臺灣銀行特殊格式：col1 包含「擔保\n無擔保」，數據在本行和下一行
+            if "擔保" in col1:
+                if "無擔保" in col1:
+                    # 本行是擔保，下一行是無擔保
+                    subject = "企業金融_擔保"
+                    pending_unsecured = True
+                elif "無" not in col1:
+                    subject = "企業金融_擔保"
         elif "消費金融" in col0:
             current_category = "消費金融"
             if "住宅" in col1 or "抵押" in col1:
@@ -200,7 +211,7 @@ def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> 
             subject = "消費金融_現金卡"
         elif "小額" in col1 or "純信用" in col1 or "信用貸款" in col1:
             subject = "消費金融_小額純信用貸款"
-        elif "其他" in col1:
+        elif "其他" in col1 or "其他" in normalize_text(row[1] if len(row) > 1 and row[1] else ""):
             if "擔保" in col2 and "無" not in col2:
                 subject = "消費金融_其他_擔保"
             elif "無擔保" in col2:
@@ -476,7 +487,7 @@ if __name__ == "__main__":
         print(df.to_string())
     else:
         # 預設處理 data/114Q1 目錄
-        base_dir = Path(__file__).parent.parent
+        base_dir = Path(__file__).parent  # refactor 目錄
         data_dir = base_dir / "data" / "114Q1"
         output_path = base_dir / "Output" / "114Q1_資產品質報表.xlsx"
         

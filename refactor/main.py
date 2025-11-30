@@ -99,7 +99,7 @@ async def run_download(year_quarter: str, banks: list = None, headless: bool = T
 
 def run_report(year_quarter: str):
     """執行報表生成"""
-    base_dir = Path(__file__).parent.parent
+    base_dir = Path(__file__).parent  # refactor 目錄
     data_dir = base_dir / "data" / year_quarter
     output_path = base_dir / "Output" / f"{year_quarter}_資產品質報表.xlsx"
     
