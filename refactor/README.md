@@ -7,13 +7,21 @@
 ### 1. 安裝相依套件
 
 ```bash
-# 必要套件
-pip install playwright pandas pdfplumber openpyxl
-python -m playwright install chromium
+# 1. 建立並啟用虛擬環境 (建議)
+python -m venv venv
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
 
-# OCR 支援（可選，處理掃描式 PDF）
-brew install tesseract tesseract-lang poppler
-pip install pytesseract pdf2image pillow
+# 2. 安裝 Python 套件
+pip install -r requirements.txt
+
+# 3. 安裝 Playwright 瀏覽器
+playwright install chromium
+
+# 4. OCR 支援（可選，處理掃描式 PDF）
+# Mac: brew install tesseract tesseract-lang poppler
+# Linux: sudo apt-get install tesseract-ocr tesseract-ocr-chi-tra poppler-utils
+# Windows: 需手動安裝 Tesseract OCR 與 Poppler 並設定 PATH
 ```
 
 ### 2. 執行程式
@@ -29,6 +37,45 @@ python main.py 114Q1                    # 下載 + 生成報表
 python main.py 114Q1 --download-only    # 只下載
 python main.py 114Q1 --report-only      # 只生成報表
 ```
+
+---
+
+## 開發環境設定與遷移
+
+若您需要更換電腦或重新建置開發環境，請遵循以下標準流程。
+
+### 為什麼不能直接複製 venv？
+虛擬環境 (`venv`) 資料夾包含絕對路徑與特定作業系統的二進位檔案，**無法直接複製到另一台電腦使用**。請務必在新電腦上重新建立環境。
+
+### 遷移步驟
+
+1. **舊電腦：匯出依賴**
+   確認 `requirements.txt` 包含所有需要的套件：
+   ```bash
+   pip freeze > requirements.txt
+   ```
+
+2. **傳輸程式碼**
+   將專案資料夾複製到新電腦（**排除** `venv` 資料夾）。
+
+3. **新電腦：重建環境**
+   ```bash
+   # 1. 進入專案目錄
+   cd refactor
+
+   # 2. 建立新的虛擬環境
+   python -m venv venv
+
+   # 3. 啟用虛擬環境
+   # Windows:
+   venv\Scripts\activate
+   # Mac/Linux:
+   source venv/bin/activate
+
+   # 4. 安裝依賴
+   pip install -r requirements.txt
+   playwright install chromium
+   ```
 
 ---
 
