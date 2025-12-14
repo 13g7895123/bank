@@ -64,6 +64,7 @@ class AssetQualityRow:
     overdue_amount: float        # 逾期放款金額（仟元）
     total_loan: float            # 放款總額（仟元）
     overdue_ratio: float         # 逾放比率
+    bank_code: int               # 銀行代碼（用於排序）
     bank_name: str               # 銀行名稱
 
 
@@ -198,7 +199,7 @@ def normalize_text(text: str) -> str:
     return str(text).replace(" ", "").replace("\n", "").replace("　", "").strip()
 
 
-def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> list[AssetQualityRow]:
+def extract_from_table(table: list, year: str, quarter: str, bank_code: int, bank_name: str) -> list[AssetQualityRow]:
     """從表格資料提取資產品質資訊"""
     results = []
     current_category = ""
@@ -267,13 +268,14 @@ def extract_from_table(table: list, year: str, quarter: str, bank_name: str) -> 
                 overdue_amount=parse_number(overdue_amount),
                 total_loan=parse_number(total_loan),
                 overdue_ratio=parse_ratio(overdue_ratio),
+                bank_code=bank_code,
                 bank_name=bank_name,
             ))
     
     return results
 
 
-def extract_from_text(text: str, year: str, quarter: str, bank_name: str) -> list[AssetQualityRow]:
+def extract_from_text(text: str, year: str, quarter: str, bank_code: int, bank_name: str) -> list[AssetQualityRow]:
     """
     從純文字提取資產品質資訊（用於無法提取表格的 PDF）。
     這是備援方案，準確度較低。
@@ -300,13 +302,14 @@ def extract_from_text(text: str, year: str, quarter: str, bank_name: str) -> lis
                 overdue_amount=parse_number(match.group(1)),
                 total_loan=parse_number(match.group(2)),
                 overdue_ratio=parse_ratio(match.group(3)),
+                bank_code=bank_code,
                 bank_name=bank_name,
             ))
     
     return results
 
 
-def extract_feib_by_position(page, year: str, quarter: str, bank_name: str) -> list[AssetQualityRow]:
+def extract_feib_by_position(page, year: str, quarter: str, bank_code: int, bank_name: str) -> list[AssetQualityRow]:
     """
     遠東國際商業銀行專用解析器
     
@@ -413,6 +416,7 @@ def extract_feib_by_position(page, year: str, quarter: str, bank_name: str) -> l
                 overdue_amount=overdue,
                 total_loan=total,
                 overdue_ratio=ratio,
+                bank_code=bank_code,
                 bank_name=bank_name,
             ))
     
@@ -421,12 +425,13 @@ def extract_feib_by_position(page, year: str, quarter: str, bank_name: str) -> l
     return results
 
 
-def extract_asset_quality_data(pdf_path: str, bank_name: str, force_year_quarter: str = None) -> list[AssetQualityRow]:
+def extract_asset_quality_data(pdf_path: str, bank_code: int, bank_name: str, force_year_quarter: str = None) -> list[AssetQualityRow]:
     """
     從 PDF 提取資產品質資料。
     
     Args:
         pdf_path: PDF 檔案路徑
+        bank_code: 銀行代碼
         bank_name: 銀行名稱
         force_year_quarter: 強制指定年度季度（如 "114Q2"），優先使用此值
         
@@ -459,7 +464,7 @@ def extract_asset_quality_data(pdf_path: str, bank_name: str, force_year_quarter
                     text = page.extract_text() or ""
                     if "資產品質" in text:
                         # 使用預設的年度季度
-                        results = extract_feib_by_position(page, year, quarter, bank_name)
+                        results = extract_feib_by_position(page, year, quarter, bank_code, bank_name)
                         if results:
                             break
                 
@@ -485,14 +490,14 @@ def extract_asset_quality_data(pdf_path: str, bank_name: str, force_year_quarter
                     tables = page.extract_tables()
                     for table in tables:
                         if len(table) >= 5:  # 至少需要 5 列才是有效表格
-                            rows = extract_from_table(table, year, quarter, bank_name)
+                            rows = extract_from_table(table, year, quarter, bank_code, bank_name)
                             if rows:
                                 results.extend(rows)
                                 break
                 
                 if not results:
                     # 文字模式（備援）
-                    rows = extract_from_text(text, year, quarter, bank_name)
+                    rows = extract_from_text(text, year, quarter, bank_code, bank_name)
                     if rows:
                         results.extend(rows)
                 
@@ -521,7 +526,7 @@ def extract_asset_quality_data(pdf_path: str, bank_name: str, force_year_quarter
     return results
 
 
-def _parse_single_pdf(pdf_file: Path, force_year_quarter: str = None) -> Tuple[str, List[AssetQualityRow]]:
+def _parse_single_pdf(pdf_file: Path, force_year_quarter: str = None) -> Tuple[int, str, List[AssetQualityRow]]:
     """
     解析單一 PDF 檔案（用於多工執行）
     
@@ -530,22 +535,28 @@ def _parse_single_pdf(pdf_file: Path, force_year_quarter: str = None) -> Tuple[s
         force_year_quarter: 強制指定年度季度（如 "114Q2"）
         
     Returns:
-        (銀行名稱, 資料列表)
+        (銀行代碼, 銀行名稱, 資料列表)
     """
-    # 從檔名提取銀行名稱
+    # 從檔名提取銀行代碼和名稱
+    # 檔名格式: {bank_code}_{bank_name}_{year}Q{quarter}.pdf
     filename = pdf_file.stem
     parts = filename.split('_')
     if len(parts) >= 2:
+        try:
+            bank_code = int(parts[0])
+        except ValueError:
+            bank_code = 99  # 無法解析代碼時使用預設值
         bank_name = parts[1]
     else:
+        bank_code = 99
         bank_name = filename
     
     try:
-        rows = extract_asset_quality_data(str(pdf_file), bank_name, force_year_quarter)
-        return bank_name, rows
+        rows = extract_asset_quality_data(str(pdf_file), bank_code, bank_name, force_year_quarter)
+        return bank_code, bank_name, rows
     except Exception as e:
         logger.exception(f"解析 PDF 失敗: {bank_name}")
-        return bank_name, []
+        return bank_code, bank_name, []
 
 
 def generate_report(
@@ -597,7 +608,7 @@ def generate_report(
         for future in as_completed(future_to_pdf):
             completed += 1
             try:
-                bank_name, rows = future.result()
+                bank_code, bank_name, rows = future.result()
                 if rows:
                     all_data.extend(rows)
                     print(f"[{completed:02d}/{total}] ✓ {bank_name}: {len(rows)} 筆資料")
@@ -628,13 +639,14 @@ def generate_report(
                 "逾期放款金額(單位：仟元)": row.overdue_amount,
                 "放款總額(單位：仟元)": row.total_loan,
                 "逾放比率": row.overdue_ratio,
+                "銀行代碼": row.bank_code,
                 "銀行名稱": row.bank_name,
             }
             for row in all_data
         ])
         
-        # 排序
-        df = df.sort_values(by=["銀行名稱", "業務別項目"]).reset_index(drop=True)
+        # 按銀行代碼排序（依據 refactor/banks 資料夾的順序）
+        df = df.sort_values(by=["銀行代碼", "業務別項目"]).reset_index(drop=True)
         
         # 確保輸出目錄存在
         output_dir = os.path.dirname(output_path)
@@ -654,6 +666,7 @@ def generate_report(
 
 def generate_single_bank_report(
     pdf_path: str,
+    bank_code: int,
     bank_name: str,
     output_path: str = None,
 ) -> pd.DataFrame:
@@ -662,13 +675,14 @@ def generate_single_bank_report(
     
     Args:
         pdf_path: PDF 檔案路徑
+        bank_code: 銀行代碼
         bank_name: 銀行名稱
         output_path: 輸出 Excel 路徑（可選）
         
     Returns:
         該銀行的資產品質 DataFrame
     """
-    rows = extract_asset_quality_data(pdf_path, bank_name)
+    rows = extract_asset_quality_data(pdf_path, bank_code, bank_name)
     
     if rows:
         df = pd.DataFrame([
@@ -679,6 +693,7 @@ def generate_single_bank_report(
                 "逾期放款金額(單位：仟元)": row.overdue_amount,
                 "放款總額(單位：仟元)": row.total_loan,
                 "逾放比率": row.overdue_ratio,
+                "銀行代碼": row.bank_code,
                 "銀行名稱": row.bank_name,
             }
             for row in rows
@@ -696,14 +711,26 @@ def generate_single_bank_report(
     return pd.DataFrame()
 
 
+
 if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1:
         # 指定 PDF 檔案測試
         pdf_path = sys.argv[1]
-        bank_name = sys.argv[2] if len(sys.argv) > 2 else "測試銀行"
-        df = generate_single_bank_report(pdf_path, bank_name)
+        # 從檔名提取銀行代碼和名稱
+        filename = Path(pdf_path).stem
+        parts = filename.split('_')
+        if len(parts) >= 2:
+            try:
+                bank_code = int(parts[0])
+            except ValueError:
+                bank_code = 99
+            bank_name = parts[1]
+        else:
+            bank_code = 99
+            bank_name = sys.argv[2] if len(sys.argv) > 2 else "測試銀行"
+        df = generate_single_bank_report(pdf_path, bank_code, bank_name)
         print(df.to_string())
     else:
         # 預設處理 data/114Q1 目錄
@@ -719,3 +746,4 @@ if __name__ == "__main__":
         else:
             print(f"資料目錄不存在: {data_dir}")
             print("用法: python report_generator.py [pdf_path] [bank_name]")
+
