@@ -7,13 +7,22 @@
 # 使用方式：
 #   ./build_production.sh [production_path]
 #
+# 設定檔：
+#   config.json - 設定 production_path（優先於命令列參數）
+#   參考 config.example.json 建立設定檔
+#
 # 參數：
 #   production_path - production 目錄的絕對路徑（選填）
 #                     預設值：與 refactor 同層的 production 目錄
 #
+# 優先順序（由高到低）：
+#   1. config.json 中的 production_path
+#   2. 命令列參數
+#   3. 預設路徑
+#
 # 範例：
-#   ./build_production.sh                           # 使用預設路徑
-#   ./build_production.sh /opt/bank/production      # 指定路徑
+#   ./build_production.sh                           # 使用設定檔或預設路徑
+#   ./build_production.sh /opt/bank/production      # 指定路徑（設定檔優先）
 # ============================================================
 
 set -e
@@ -28,9 +37,30 @@ NC='\033[0m' # No Color
 # 取得腳本所在目錄（refactor 目錄）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REFACTOR_DIR="$SCRIPT_DIR"
+CONFIG_FILE="$SCRIPT_DIR/config.json"
 
-# 設定 production 目錄路徑
-if [ -n "$1" ]; then
+# 從 config.json 讀取設定
+read_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        # 使用 python 解析 JSON（較可靠）
+        if command -v python3 &> /dev/null; then
+            python3 -c "import json; print(json.load(open('$CONFIG_FILE')).get('production_path', ''))" 2>/dev/null
+        elif command -v python &> /dev/null; then
+            python -c "import json; print(json.load(open('$CONFIG_FILE')).get('production_path', ''))" 2>/dev/null
+        else
+            # 簡易 grep 方式（備用）
+            grep -oP '"production_path"\s*:\s*"\K[^"]+' "$CONFIG_FILE" 2>/dev/null || echo ""
+        fi
+    fi
+}
+
+# 設定 production 目錄路徑（優先順序：設定檔 > 命令列 > 預設）
+CONFIG_PRODUCTION_PATH=$(read_config)
+
+if [ -n "$CONFIG_PRODUCTION_PATH" ]; then
+    PRODUCTION_DIR="$CONFIG_PRODUCTION_PATH"
+    echo -e "${YELLOW}使用設定檔路徑：$CONFIG_FILE${NC}"
+elif [ -n "$1" ]; then
     PRODUCTION_DIR="$1"
 else
     # 預設路徑：refactor 的同層目錄
