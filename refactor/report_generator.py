@@ -648,13 +648,16 @@ def generate_report(
         # 按銀行代碼排序（依據 refactor/banks 資料夾的順序）
         df = df.sort_values(by=["銀行代碼", "業務別項目"]).reset_index(drop=True)
         
+        # 輸出前移除銀行代碼欄位（排序已完成，不影響順序）
+        df_output = df.drop(columns=["銀行代碼"])
+        
         # 確保輸出目錄存在
         output_dir = os.path.dirname(output_path)
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
         
         # 輸出為 Excel
-        df.to_excel(output_path, index=False, engine='openpyxl')
+        df_output.to_excel(output_path, index=False, engine='openpyxl')
         print(f"\n報表已輸出: {output_path}")
         print(f"共 {len(df)} 筆資料（{success_count} 家銀行）")
         
@@ -700,10 +703,12 @@ def generate_single_bank_report(
         ])
         
         if output_path:
+            # 輸出前移除銀行代碼欄位
+            df_output = df.drop(columns=["銀行代碼"])
             output_dir = os.path.dirname(output_path)
             if output_dir:
                 os.makedirs(output_dir, exist_ok=True)
-            df.to_excel(output_path, index=False, engine='openpyxl')
+            df_output.to_excel(output_path, index=False, engine='openpyxl')
             print(f"報表已輸出: {output_path}")
         
         return df

@@ -6,6 +6,25 @@
 
 ### 1. 安裝相依套件
 
+#### Windows（推薦：使用自動設定腳本）
+
+```powershell
+# 在 PowerShell 中執行
+.\setup_env.ps1
+```
+
+腳本會自動：
+1. 建立 Python 虛擬環境 (`venv`)
+2. 安裝所有相依套件
+3. 安裝 Playwright 瀏覽器
+
+執行完成後，手動啟動虛擬環境：
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+#### 手動安裝（Mac/Linux/Windows）
+
 ```bash
 # 1. 建立並啟用虛擬環境 (建議)
 python -m venv venv

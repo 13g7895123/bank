@@ -86,8 +86,17 @@ fi
 # 建立或清空目標目錄
 echo -e "\n${BLUE}[1/4] 準備目標目錄...${NC}"
 if [ -d "$PRODUCTION_DIR" ]; then
-    echo -e "${YELLOW}清空現有目錄...${NC}"
-    rm -rf "$PRODUCTION_DIR"
+    echo -e "${YELLOW}清空現有目錄內容...${NC}"
+    # 檢查是否為 Windows 路徑（WSL 掛載）
+    if [[ "$PRODUCTION_DIR" == /mnt/* ]]; then
+        # 使用 Windows 命令清空目錄內容
+        WIN_PATH=$(echo "$PRODUCTION_DIR" | sed 's|^/mnt/\([a-z]\)|\U\1:|' | sed 's|/|\\|g')
+        cmd.exe /c "del /s /q \"${WIN_PATH}\\*\" 2>nul" || true
+        cmd.exe /c "for /d %d in (\"${WIN_PATH}\\*\") do rmdir /s /q \"%d\" 2>nul" || true
+    else
+        # Linux 路徑：直接清空內容
+        rm -rf "${PRODUCTION_DIR:?}"/*
+    fi
 fi
 mkdir -p "$PRODUCTION_DIR"
 echo -e "${GREEN}✓ 目標目錄已準備${NC}"
@@ -106,6 +115,8 @@ rsync -av --progress \
     --exclude='*.pyc' \
     --exclude='.pytest_cache' \
     --exclude='build_production.sh' \
+    --exclude='config.json' \
+    --exclude='config.example.json' \
     "$REFACTOR_DIR/" "$PRODUCTION_DIR/"
 echo -e "${GREEN}✓ 檔案複製完成${NC}"
 
